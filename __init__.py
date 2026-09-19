@@ -13,11 +13,13 @@ from .nodes.text_replace import HondaTextReplace
 from .nodes.text_split import HondaTextSplit
 from .nodes.text_switch import HondaTextSwitch
 from .nodes.text_preview import HondaTextPreview
+from .nodes.text import HondaText
 
 
 class HondaNodesExtension(ComfyExtension):
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
         return [
+            HondaText,
             HondaTextConcatenate,
             HondaTextReplace,
             HondaTextSplit,
