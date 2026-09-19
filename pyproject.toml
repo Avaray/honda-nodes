@@ -1,0 +1,16 @@
+[project]
+name = "honda-nodes"
+description = "Custom node pack for ComfyUI, built for both the current node system and the upcoming V3 (\"Nodes 2.0\") schema."
+version = "0.1.0"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+
+[project.urls]
+Repository = "https://github.com/Avaray/honda-nodes"
+
+# Metadata used by the Comfy Registry / comfy-cli when publishing.
+# Fill in PublisherId with your own registry publisher id before publishing.
+[tool.comfy]
+PublisherId = "your-publisher-id"
+DisplayName = "Honda Nodes"
+Icon = ""
