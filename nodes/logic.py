@@ -27,6 +27,10 @@ def concatenate_texts(
     separator: str,
     case_mode: str,
     skip_empty: bool = True,
+    trim_whitespace: bool = False,
+    parse_special_chars: bool = False,
+    global_prefix: str = "",
+    global_suffix: str = "",
 ) -> str:
     """
     Join an ordered sequence of text values with `separator`, then apply
@@ -41,10 +45,23 @@ def concatenate_texts(
     output. skip_empty=False keeps a connected empty string as a literal
     empty segment, while still ignoring unconnected channels.
     """
-    if skip_empty:
-        parts = [t for t in texts if t]
-    else:
-        parts = [t for t in texts if t is not None]
+    if parse_special_chars:
+        # Evaluate common escape sequences
+        separator = separator.replace("\\n", "\n").replace("\\t", "\t")
+        global_prefix = global_prefix.replace("\\n", "\n").replace("\\t", "\t")
+        global_suffix = global_suffix.replace("\\n", "\n").replace("\\t", "\t")
+
+    parts = []
+    for t in texts:
+        if t is None:
+            continue
+        if trim_whitespace:
+            t = t.strip()
+        if skip_empty and not t:
+            continue
+        parts.append(t)
 
     joined = (separator or "").join(parts)
-    return apply_case(joined, case_mode)
+    joined = apply_case(joined, case_mode)
+    
+    return f"{global_prefix}{joined}{global_suffix}"

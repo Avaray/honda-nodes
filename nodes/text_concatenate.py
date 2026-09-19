@@ -38,6 +38,10 @@ class HondaTextConcatenate(io.ComfyNode):
                 io.Combo.Input("case_mode", options=CASE_MODES, default=CASE_KEEP),
                 io.String.Input("separator", default="_"),
                 io.Boolean.Input("skip_empty", default=True),
+                io.Boolean.Input("trim_whitespace", default=False),
+                io.Boolean.Input("parse_special_chars", default=False),
+                io.String.Input("global_prefix", default=""),
+                io.String.Input("global_suffix", default=""),
                 io.Autogrow.Input("texts", template=text_template),
             ],
             outputs=[
@@ -46,11 +50,30 @@ class HondaTextConcatenate(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, case_mode, separator, skip_empty, texts) -> io.NodeOutput:
+    def execute(
+        cls,
+        case_mode,
+        separator,
+        skip_empty,
+        trim_whitespace,
+        parse_special_chars,
+        global_prefix,
+        global_suffix,
+        texts,
+    ) -> io.NodeOutput:
         # `texts` is a dict mapping the generated slot names (text0, text1, ...)
         # to their values, in slot order.
         values = list(texts.values())
-        result = concatenate_texts(values, separator, case_mode, skip_empty)
+        result = concatenate_texts(
+            values,
+            separator,
+            case_mode,
+            skip_empty,
+            trim_whitespace,
+            parse_special_chars,
+            global_prefix,
+            global_suffix,
+        )
         return io.NodeOutput(result)
 
 
