@@ -37,7 +37,7 @@ class HondaTextReplace(io.ComfyNode):
                     "use_regex",
                     default=False,
                     display_name="Use Regex",
-                    tooltip="If enabled, treats the 'Find' field as a regular expression.",
+                    tooltip="If enabled, treats the 'Find' field as a Python Regular Expression.",
                 ),
                 io.Boolean.Input(
                     "ignore_case",
@@ -68,35 +68,17 @@ class HondaTextReplace(io.ComfyNode):
         replace_all: bool,
     ) -> io.NodeOutput:
         if not find:
-            return io.NodeOutput(text)
+            return io.NodeOutput(text or "")
 
         count = 0 if replace_all else 1
 
         if use_regex:
             flags = re.IGNORECASE if ignore_case else 0
-            pattern_str = find
-            
-            # Check for JS-style /pattern/flags syntax
-            match = re.match(r"^/(.*)/([a-zA-Z]*)$", find, flags=re.DOTALL)
-            if match:
-                pattern_str = match.group(1)
-                flag_str = match.group(2)
-                if 'i' in flag_str:
-                    flags |= re.IGNORECASE
-                if 'm' in flag_str:
-                    flags |= re.MULTILINE
-                if 's' in flag_str:
-                    flags |= re.DOTALL
-                # Note: 'g' (global) is handled by the replace_all boolean, but we could theoretically 
-                # force count=0 if 'g' is present. For now we let the explicit boolean control it.
-                if 'g' in flag_str:
-                    count = 0
-
             try:
-                result = re.sub(pattern_str, replace_with, text, count=count, flags=flags)
+                result = re.sub(find, replace_with, text or "", count=count, flags=flags)
             except re.error as e:
                 print(f"[Honda Nodes] Invalid Regex in Text Replace: {e}")
-                result = text
+                result = text or ""
         else:
             if ignore_case:
                 flags = re.IGNORECASE
@@ -104,11 +86,11 @@ class HondaTextReplace(io.ComfyNode):
                 # re.sub with escaped pattern behaves identically to case-insensitive literal replace,
                 # but we must also escape the replacement string so things like \1 aren't parsed!
                 # Or we can pass a lambda that just returns the literal replacement string.
-                result = re.sub(pattern, lambda m: replace_with, text, count=count, flags=flags)
+                result = re.sub(pattern, lambda m: replace_with, text or "", count=count, flags=flags)
             else:
                 if count == 0:
-                    result = text.replace(find, replace_with)
+                    result = (text or "").replace(find, replace_with)
                 else:
-                    result = text.replace(find, replace_with, count)
+                    result = (text or "").replace(find, replace_with, count)
 
         return io.NodeOutput(result)
