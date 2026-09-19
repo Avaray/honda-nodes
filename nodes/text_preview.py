@@ -21,6 +21,18 @@ class HondaTextPreview(io.ComfyNode):
                     display_name="Text Input",
                     tooltip="The text you want to preview.",
                 ),
+                # This widget MUST be named "text" — ui.PreviewText.as_dict() returns
+                # {"text": (value,)} and the Vue frontend looks for a widget with this exact name
+                # to render the text preview on the node body.
+                # It is readonly (the user should not type here), it only receives values from
+                # the backend via the ui output dictionary after execution.
+                io.String.Input(
+                    "text",
+                    default="",
+                    multiline=True,
+                    display_name="",
+                    tooltip="Preview of the connected text. Updated automatically after execution.",
+                ),
             ],
             outputs=[
                 io.String.Output(display_name="Text Pass-through"),
@@ -31,8 +43,9 @@ class HondaTextPreview(io.ComfyNode):
     def execute(
         cls,
         text_input: str,
+        text: str,
     ) -> io.NodeOutput:
         text_input = text_input or ""
-        # We rename the input socket from 'text' to 'text_input' so it doesn't collide
-        # with ui.PreviewText which specifically targets a 'text' widget in the frontend.
+        # ui.PreviewText serializes to {"text": (text_input,)}, which the frontend maps
+        # to the "text" widget declared above, updating it reactively after execution.
         return io.NodeOutput(text_input, ui=ui.PreviewText(text_input))
