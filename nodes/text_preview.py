@@ -2,7 +2,7 @@
 "Text Preview" - Schema V3 node definition.
 """
 
-from comfy_api.latest import io
+from comfy_api.latest import io, ui
 
 
 class HondaTextPreview(io.ComfyNode):
@@ -21,13 +21,6 @@ class HondaTextPreview(io.ComfyNode):
                     display_name="Text Input",
                     tooltip="The text you want to preview.",
                 ),
-                io.String.Input(
-                    "text_preview",
-                    default="",
-                    multiline=True,
-                    display_name="",
-                    tooltip="The previewed text will appear here after execution.",
-                ),
             ],
             outputs=[
                 io.String.Output(display_name="Text Pass-through"),
@@ -38,8 +31,7 @@ class HondaTextPreview(io.ComfyNode):
     def execute(
         cls,
         text: str,
-        text_preview: str,
     ) -> io.NodeOutput:
         text = text or ""
-        # In Schema V3, returning the value for a widget in the 'ui' dict updates it in the Vue frontend.
-        return io.NodeOutput(text, ui={"text_preview": [text]})
+        # Schema V3 uses ui.PreviewText to create a dedicated headless preview on the node
+        return io.NodeOutput(text, ui=ui.PreviewText(text))
