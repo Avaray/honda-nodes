@@ -48,6 +48,18 @@ class HondaTextConcatenate(io.ComfyNode):
                     display_name="Separator",
                     tooltip="Text inserted between each connected text channel (and also before the suffix and after the prefix).",
                 ),
+                io.Boolean.Input(
+                    "replace_whitespaces",
+                    default=False,
+                    display_name="Replace Whitespaces",
+                    tooltip="If enabled, replaces all whitespace characters inside the text channels with the symbol specified below.",
+                ),
+                io.String.Input(
+                    "replace_whitespaces_with",
+                    default="_",
+                    display_name="Replace With",
+                    tooltip="The symbol or text to replace whitespaces with.",
+                ),
                 io.String.Input(
                     "global_prefix",
                     default="",
@@ -89,10 +101,12 @@ class HondaTextConcatenate(io.ComfyNode):
         cls,
         case_mode,
         separator,
-        skip_empty,
-        trim_whitespaces,
+        replace_whitespaces,
+        replace_whitespaces_with,
         global_prefix,
         global_suffix,
+        skip_empty,
+        trim_whitespaces,
         texts,
     ) -> io.NodeOutput:
         # `texts` is a dict mapping the generated slot names (text0, text1, ...)
@@ -104,6 +118,8 @@ class HondaTextConcatenate(io.ComfyNode):
             case_mode,
             skip_empty,
             trim_whitespaces,
+            replace_whitespaces,
+            replace_whitespaces_with,
             global_prefix,
             global_suffix,
         )
