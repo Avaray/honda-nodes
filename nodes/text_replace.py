@@ -17,9 +17,9 @@ class HondaTextReplace(io.ComfyNode):
             inputs=[
                 io.String.Input(
                     "text",
-                    multiline=True,
-                    display_name="Text",
-                    tooltip="The original text to modify.",
+                    force_input=True,
+                    display_name="Text Input",
+                    tooltip="The original text to modify (must be connected from another node).",
                 ),
                 io.String.Input(
                     "find",
