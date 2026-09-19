@@ -28,7 +28,7 @@ class HondaTextConcatenate:
     @classmethod
     def INPUT_TYPES(cls):
         optional = {
-            f"text_{i}": ("STRING", {"forceInput": True})
+            f"Text Input {i:02d}": ("STRING", {"forceInput": True})
             for i in range(1, MAX_TEXT_FIELDS + 1)
         }
         return {
@@ -41,7 +41,7 @@ class HondaTextConcatenate:
         }
 
     RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("text",)
+    RETURN_NAMES = ("Output",)
     FUNCTION = "execute"
     CATEGORY = "Honda Nodes/Text"
     DESCRIPTION = (
@@ -54,7 +54,7 @@ class HondaTextConcatenate:
     def execute(self, case_mode, separator, skip_empty, **kwargs):
         # None = channel not connected at all; "" = connected but empty.
         # concatenate_texts() tells these apart (see logic.py).
-        texts = [kwargs.get(f"text_{i}", None) for i in range(1, MAX_TEXT_FIELDS + 1)]
+        texts = [kwargs.get(f"Text Input {i:02d}", None) for i in range(1, MAX_TEXT_FIELDS + 1)]
         result = concatenate_texts(texts, separator, case_mode, skip_empty)
         return (result,)
 

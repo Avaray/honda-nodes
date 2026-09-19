@@ -30,9 +30,9 @@ from .logic import (
 class HondaTextConcatenateV3(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
-        text_template = io.Autogrow.TemplatePrefix(
+        text_template = io.Autogrow.TemplateNames(
             input=io.String.Input("text", force_input=True),
-            prefix="text",
+            names=[f"Text Input {i:02d}" for i in range(1, MAX_TEXT_FIELDS + 1)],
             min=MIN_TEXT_FIELDS,
             max=MAX_TEXT_FIELDS,
         )
@@ -54,7 +54,7 @@ class HondaTextConcatenateV3(io.ComfyNode):
                 io.Autogrow.Input("texts", template=text_template),
             ],
             outputs=[
-                io.String.Output(display_name="text"),
+                io.String.Output(display_name="Output"),
             ],
         )
 

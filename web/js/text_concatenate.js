@@ -29,7 +29,7 @@ const MAX_FIELDS = 99;
 const CHANNEL_TYPE = "STRING";
 
 function channelName(i) {
-    return `text_${i}`;
+    return `Text Input ${String(i).padStart(2, '0')}`;
 }
 
 function isHondaNode(node) {
