@@ -29,4 +29,8 @@ class HondaNodesExtension(ComfyExtension):
 async def comfy_entrypoint() -> HondaNodesExtension:
     return HondaNodesExtension()
 
-__all__ = ["comfy_entrypoint"]
+# Tell ComfyUI to serve files from ./web as /extensions/honda-nodes/
+# This makes web/js/text_preview.js available to the frontend.
+WEB_DIRECTORY = "./web"
+
+__all__ = ["comfy_entrypoint", "WEB_DIRECTORY"]
