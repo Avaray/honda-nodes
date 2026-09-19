@@ -1,19 +1,8 @@
 """
 "Text Concatenate" - modern V3 (Schema) node definition.
 
-This is the primary, forward-looking implementation, targeting the schema
-that ComfyUI's upcoming "Nodes 2.0" (Vue-based) UI is built around. It is
-selected automatically whenever the running ComfyUI exposes
-`comfy_api.latest` with `io.Autogrow` support (shipped since roughly
-ComfyUI v0.6.0 / January 2026) - see the package's root __init__.py.
-
-The numbered "channels" are implemented with `io.Autogrow.TemplatePrefix`
-over a connection-only STRING input (`force_input=True` - no typed widget,
-socket only). This is the same built-in mechanism ComfyUI's own
-`AutogrowPrefixTestNode` reference/test node uses: it grows the number of
-available sockets as the user connects wires to them, from MIN_TEXT_FIELDS
-up to MAX_TEXT_FIELDS - like adding a new channel to a mixing console the
-moment the previous one gets plugged in.
+This is the primary implementation, targeting the schema
+that ComfyUI's upcoming "Nodes 2.0" (Vue-based) UI is built around.
 """
 
 from comfy_api.latest import ComfyExtension, io
@@ -27,7 +16,7 @@ from .logic import (
 )
 
 
-class HondaTextConcatenateV3(io.ComfyNode):
+class HondaTextConcatenate(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         text_template = io.Autogrow.TemplateNames(
@@ -68,7 +57,7 @@ class HondaTextConcatenateV3(io.ComfyNode):
 class HondaNodesExtension(ComfyExtension):
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
         return [
-            HondaTextConcatenateV3,
+            HondaTextConcatenate,
             # Add more Honda Nodes here as the pack grows.
         ]
 

@@ -1,9 +1,5 @@
 """
 Shared logic for the "Text Concatenate" node.
-
-Kept separate from both the V1 and V3 node definitions so the two
-implementations (legacy INPUT_TYPES-based and modern Schema/V3-based)
-stay perfectly in sync and are covered by the same simple unit tests.
 """
 
 from typing import Iterable, Optional
