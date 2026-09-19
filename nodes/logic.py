@@ -10,7 +10,8 @@ MAX_TEXT_FIELDS = 99
 CASE_KEEP = "Keep Original"
 CASE_UPPER = "UPPERCASE"
 CASE_LOWER = "lowercase"
-CASE_MODES = [CASE_KEEP, CASE_UPPER, CASE_LOWER]
+CASE_CAPITALIZE = "Capitalize Each Word"
+CASE_MODES = [CASE_KEEP, CASE_UPPER, CASE_LOWER, CASE_CAPITALIZE]
 
 
 def apply_case(text: str, mode: str) -> str:
@@ -19,6 +20,8 @@ def apply_case(text: str, mode: str) -> str:
         return text.upper()
     if mode == CASE_LOWER:
         return text.lower()
+    if mode == CASE_CAPITALIZE:
+        return text.title()
     return text
 
 
@@ -52,6 +55,9 @@ def concatenate_texts(
         global_suffix = global_suffix.replace("\\n", "\n").replace("\\t", "\t")
 
     parts = []
+    if global_prefix:
+        parts.append(global_prefix)
+
     for t in texts:
         if t is None:
             continue
@@ -61,7 +67,8 @@ def concatenate_texts(
             continue
         parts.append(t)
 
+    if global_suffix:
+        parts.append(global_suffix)
+
     joined = (separator or "").join(parts)
-    joined = apply_case(joined, case_mode)
-    
-    return f"{global_prefix}{joined}{global_suffix}"
+    return apply_case(joined, case_mode)

@@ -35,14 +35,55 @@ class HondaTextConcatenate(io.ComfyNode):
                 "to each channel you want to use."
             ),
             inputs=[
-                io.Combo.Input("case_mode", options=CASE_MODES, default=CASE_KEEP),
-                io.String.Input("separator", default="_"),
-                io.Boolean.Input("skip_empty", default=True),
-                io.Boolean.Input("trim_whitespace", default=False),
-                io.Boolean.Input("parse_special_chars", default=False),
-                io.String.Input("global_prefix", default=""),
-                io.String.Input("global_suffix", default=""),
-                io.Autogrow.Input("texts", template=text_template),
+                io.Combo.Input(
+                    "case_mode",
+                    options=CASE_MODES,
+                    default=CASE_KEEP,
+                    display_name="Case Mode",
+                    tooltip="Changes the capitalization of the entire final output. 'Capitalize Each Word' will make the first letter of every word uppercase.",
+                ),
+                io.String.Input(
+                    "separator",
+                    default="_",
+                    display_name="Separator",
+                    tooltip="Text inserted between each connected text channel (and also before the suffix and after the prefix).",
+                ),
+                io.String.Input(
+                    "global_prefix",
+                    default="",
+                    display_name="Global Prefix",
+                    tooltip="Text added to the very beginning of the final string. The separator will be placed between this prefix and the first text channel.",
+                ),
+                io.String.Input(
+                    "global_suffix",
+                    default="",
+                    display_name="Global Suffix",
+                    tooltip="Text added to the very end of the final string. The separator will be placed between the last text channel and this suffix.",
+                ),
+                io.Boolean.Input(
+                    "skip_empty",
+                    default=True,
+                    display_name="Skip Empty",
+                    tooltip="If enabled, ignores any connected text channels that are completely empty so they don't produce extra separators.",
+                ),
+                io.Boolean.Input(
+                    "trim_whitespace",
+                    default=False,
+                    display_name="Trim Whitespace",
+                    tooltip="If enabled, automatically removes extra spaces from the beginning and end of each text channel before joining them.",
+                ),
+                io.Boolean.Input(
+                    "parse_special_chars",
+                    default=False,
+                    display_name="Parse Special Characters",
+                    tooltip="If enabled, converts '\\n' into a real new line and '\\t' into a real tab character within the separator, prefix, and suffix fields.",
+                ),
+                io.Autogrow.Input(
+                    "texts",
+                    template=text_template,
+                    display_name="Texts",
+                    tooltip="Connect text outputs to these slots. They will be combined in order.",
+                ),
             ],
             outputs=[
                 io.String.Output(display_name="Output"),
