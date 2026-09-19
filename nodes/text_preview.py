@@ -21,6 +21,13 @@ class HondaTextPreview(io.ComfyNode):
                     display_name="Text Input",
                     tooltip="The text you want to preview.",
                 ),
+                io.String.Input(
+                    "text_preview",
+                    default="",
+                    multiline=True,
+                    display_name="Preview",
+                    tooltip="The previewed text will appear here after execution.",
+                ),
             ],
             outputs=[
                 io.String.Output(display_name="Text Pass-through"),
@@ -31,8 +38,8 @@ class HondaTextPreview(io.ComfyNode):
     def execute(
         cls,
         text: str,
+        text_preview: str,
     ) -> io.NodeOutput:
         text = text or ""
-        # Returning ui={"text": [text]} tells the frontend to display the text.
-        # We also pass the text through as an output so it can still be chained to other nodes.
-        return io.NodeOutput(text, ui={"text": [text], "string": [text]})
+        # In Schema V3, returning the value for a widget in the 'ui' dict updates it in the Vue frontend.
+        return io.NodeOutput(text, ui={"text_preview": [text]})
