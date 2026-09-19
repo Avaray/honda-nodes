@@ -10,6 +10,7 @@ This package targets ComfyUI Nodes 2.0 (Schema V3) via `comfy_api.latest`.
 from comfy_api.latest import ComfyExtension, io
 from .nodes.text_concatenate import HondaTextConcatenate
 from .nodes.text_replace import HondaTextReplace
+from .nodes.text_split import HondaTextSplit
 
 
 class HondaNodesExtension(ComfyExtension):
@@ -17,6 +18,7 @@ class HondaNodesExtension(ComfyExtension):
         return [
             HondaTextConcatenate,
             HondaTextReplace,
+            HondaTextSplit,
         ]
 
 
