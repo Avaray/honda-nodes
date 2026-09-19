@@ -117,14 +117,3 @@ class HondaTextConcatenate(io.ComfyNode):
         )
         return io.NodeOutput(result)
 
-
-class HondaNodesExtension(ComfyExtension):
-    async def get_node_list(self) -> list[type[io.ComfyNode]]:
-        return [
-            HondaTextConcatenate,
-            # Add more Honda Nodes here as the pack grows.
-        ]
-
-
-async def comfy_entrypoint() -> HondaNodesExtension:
-    return HondaNodesExtension()
