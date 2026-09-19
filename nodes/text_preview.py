@@ -25,7 +25,7 @@ class HondaTextPreview(io.ComfyNode):
                     "text_preview",
                     default="",
                     multiline=True,
-                    display_name="Preview",
+                    display_name="",
                     tooltip="The previewed text will appear here after execution.",
                 ),
             ],
