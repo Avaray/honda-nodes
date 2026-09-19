@@ -32,7 +32,6 @@ def concatenate_texts(
     case_mode: str,
     skip_empty: bool = True,
     trim_whitespaces: bool = False,
-    replace_whitespaces: bool = False,
     replace_whitespaces_with: str = "_",
     global_prefix: str = "",
     global_suffix: str = "",
@@ -57,10 +56,15 @@ def concatenate_texts(
     for t in texts:
         if t is None:
             continue
+            
         if trim_whitespaces:
-            t = re.sub(r'\s+', ' ', t).strip()
-        if replace_whitespaces:
-            t = re.sub(r'\s', replace_whitespaces_with, t)
+            t = t.strip()
+            
+        if replace_whitespaces_with != " ":
+            t = re.sub(r'\s+', replace_whitespaces_with, t)
+        elif trim_whitespaces:
+            t = re.sub(r'\s+', ' ', t)
+            
         if skip_empty and not t:
             continue
         parts.append(t)
