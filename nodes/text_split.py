@@ -2,9 +2,20 @@
 "Text Split" - Schema V3 node definition.
 """
 
+import re
+import json
 from comfy_api.latest import io
 
-MAX_SPLIT_OUTPUTS = 10
+SPLIT_COMMA = "Comma (,)"
+SPLIT_NEWLINE = "New Line (\\n)"
+SPLIT_SPACE = "Space"
+SPLIT_CUSTOM = "Custom String"
+SPLIT_REGEX = "Custom Regex"
+
+OUT_ARRAY = "Array / List"
+OUT_CSV = "Comma-Separated (CSV)"
+OUT_NEWLINE = "New Line Each"
+OUT_JSON = "JSON Array"
 
 
 class HondaTextSplit(io.ComfyNode):
@@ -14,7 +25,7 @@ class HondaTextSplit(io.ComfyNode):
             node_id="Honda_TextSplit",
             display_name="🔤 Text Split",
             category="⚡️ Honda Nodes/🔤 Text",
-            description="Splits a single text string into multiple text outputs based on a separator.",
+            description="Splits a single text string and outputs it in various formats.",
             inputs=[
                 io.String.Input(
                     "text",
@@ -22,11 +33,25 @@ class HondaTextSplit(io.ComfyNode):
                     display_name="Text Input",
                     tooltip="The original text to split (must be connected from another node).",
                 ),
+                io.Combo.Input(
+                    "split_by",
+                    options=[SPLIT_COMMA, SPLIT_NEWLINE, SPLIT_SPACE, SPLIT_CUSTOM, SPLIT_REGEX],
+                    default=SPLIT_COMMA,
+                    display_name="Split By",
+                    tooltip="What to use to split the text.",
+                ),
                 io.String.Input(
-                    "separator",
-                    default="_",
-                    display_name="Separator",
-                    tooltip="The character or sequence to split the text by.",
+                    "custom_splitter",
+                    default="",
+                    display_name="Custom Splitter",
+                    tooltip="Used only if 'Split By' is set to Custom String or Custom Regex.",
+                ),
+                io.Combo.Input(
+                    "output_type",
+                    options=[OUT_ARRAY, OUT_CSV, OUT_NEWLINE, OUT_JSON],
+                    default=OUT_ARRAY,
+                    display_name="Output Type",
+                    tooltip="Format of the final output. Array is standard for batching. JSON is useful for API integrations.",
                 ),
                 io.Boolean.Input(
                     "skip_empty",
@@ -42,8 +67,7 @@ class HondaTextSplit(io.ComfyNode):
                 ),
             ],
             outputs=[
-                io.String.Output(f"text_{i}", display_name=f"Text Output {i:02d}")
-                for i in range(1, MAX_SPLIT_OUTPUTS + 1)
+                io.String.Output(display_name="Output"),
             ],
         )
 
@@ -51,15 +75,40 @@ class HondaTextSplit(io.ComfyNode):
     def execute(
         cls,
         text: str,
-        separator: str,
+        split_by: str,
+        custom_splitter: str,
+        output_type: str,
         skip_empty: bool,
         trim_whitespaces: bool,
     ) -> io.NodeOutput:
         text = text or ""
-        separator = separator or "_"
-
-        parts = text.split(separator)
+        is_regex = False
+        splitter = ","
         
+        if split_by == SPLIT_COMMA:
+            splitter = ","
+        elif split_by == SPLIT_NEWLINE:
+            splitter = "\n"
+        elif split_by == SPLIT_SPACE:
+            splitter = " "
+        elif split_by == SPLIT_CUSTOM:
+            splitter = custom_splitter
+        elif split_by == SPLIT_REGEX:
+            splitter = custom_splitter
+            is_regex = True
+            
+        if not splitter:
+            parts = [text]
+        else:
+            if is_regex:
+                try:
+                    parts = re.split(splitter, text)
+                except re.error as e:
+                    print(f"[Honda Nodes] Invalid Regex in Text Split: {e}")
+                    parts = [text]
+            else:
+                parts = text.split(splitter)
+                
         result_parts = []
         for p in parts:
             if trim_whitespaces:
@@ -68,12 +117,16 @@ class HondaTextSplit(io.ComfyNode):
                 continue
             result_parts.append(p)
             
-        # Pad with empty strings if there are fewer parts than outputs
-        while len(result_parts) < MAX_SPLIT_OUTPUTS:
-            result_parts.append("")
+        if output_type == OUT_ARRAY:
+            # ComfyUI natively supports python lists/tuples traversing through connections.
+            final_output = result_parts
+        elif output_type == OUT_CSV:
+            final_output = ", ".join(result_parts)
+        elif output_type == OUT_NEWLINE:
+            final_output = "\n".join(result_parts)
+        elif output_type == OUT_JSON:
+            final_output = json.dumps(result_parts)
+        else:
+            final_output = result_parts
             
-        # Truncate if there are more parts than outputs
-        result_parts = result_parts[:MAX_SPLIT_OUTPUTS]
-
-        # In Schema V3, multiple outputs are usually passed positionally to NodeOutput
-        return io.NodeOutput(*result_parts)
+        return io.NodeOutput(final_output)
