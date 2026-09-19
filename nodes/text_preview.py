@@ -16,7 +16,7 @@ class HondaTextPreview(io.ComfyNode):
             is_output_node=True,
             inputs=[
                 io.String.Input(
-                    "text",
+                    "text_input",
                     force_input=True,
                     display_name="Text Input",
                     tooltip="The text you want to preview.",
@@ -30,8 +30,9 @@ class HondaTextPreview(io.ComfyNode):
     @classmethod
     def execute(
         cls,
-        text: str,
+        text_input: str,
     ) -> io.NodeOutput:
-        text = text or ""
-        # Schema V3 uses ui.PreviewText to create a dedicated headless preview on the node
-        return io.NodeOutput(text, ui=ui.PreviewText(text))
+        text_input = text_input or ""
+        # We rename the input socket from 'text' to 'text_input' so it doesn't collide
+        # with ui.PreviewText which specifically targets a 'text' widget in the frontend.
+        return io.NodeOutput(text_input, ui=ui.PreviewText(text_input))
