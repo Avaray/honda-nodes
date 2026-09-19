@@ -74,8 +74,26 @@ class HondaTextReplace(io.ComfyNode):
 
         if use_regex:
             flags = re.IGNORECASE if ignore_case else 0
+            pattern_str = find
+            
+            # Check for JS-style /pattern/flags syntax
+            match = re.match(r"^/(.*)/([a-zA-Z]*)$", find, flags=re.DOTALL)
+            if match:
+                pattern_str = match.group(1)
+                flag_str = match.group(2)
+                if 'i' in flag_str:
+                    flags |= re.IGNORECASE
+                if 'm' in flag_str:
+                    flags |= re.MULTILINE
+                if 's' in flag_str:
+                    flags |= re.DOTALL
+                # Note: 'g' (global) is handled by the replace_all boolean, but we could theoretically 
+                # force count=0 if 'g' is present. For now we let the explicit boolean control it.
+                if 'g' in flag_str:
+                    count = 0
+
             try:
-                result = re.sub(find, replace_with, text, count=count, flags=flags)
+                result = re.sub(pattern_str, replace_with, text, count=count, flags=flags)
             except re.error as e:
                 print(f"[Honda Nodes] Invalid Regex in Text Replace: {e}")
                 result = text
