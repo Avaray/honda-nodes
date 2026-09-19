@@ -12,5 +12,5 @@ Repository = "https://github.com/Avaray/honda-nodes"
 # Fill in PublisherId with your own registry publisher id before publishing.
 [tool.comfy]
 PublisherId = "your-publisher-id"
-DisplayName = "Honda Nodes"
+DisplayName = "⚡️ Honda Nodes"
 Icon = ""

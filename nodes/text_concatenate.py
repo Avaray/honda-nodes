@@ -25,8 +25,8 @@ class HondaTextConcatenate(io.ComfyNode):
         )
         return io.Schema(
             node_id="Honda_TextConcatenate",
-            display_name="Text Concatenate",
-            category="Honda Nodes/Text",
+            display_name="🔤 Text Concatenate",
+            category="⚡️ Honda Nodes/🔤 Text",
             description=(
                 "Combines 1 to 99 connected text channels into one string "
                 "using a chosen separator, with optional forced "

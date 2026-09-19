@@ -11,8 +11,8 @@ class HondaTextReplace(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="Honda_TextReplace",
-            display_name="Text Replace",
-            category="Honda Nodes/Text",
+            display_name="🔤 Text Replace",
+            category="⚡️ Honda Nodes/🔤 Text",
             description="Replaces occurrences of a string or regular expression in the input text.",
             inputs=[
                 io.String.Input(
