@@ -2,6 +2,7 @@
 Shared logic for the "Text Concatenate" node.
 """
 
+import re
 from typing import Iterable, Optional
 
 MIN_TEXT_FIELDS = 1
@@ -30,8 +31,7 @@ def concatenate_texts(
     separator: str,
     case_mode: str,
     skip_empty: bool = True,
-    trim_whitespace: bool = False,
-    parse_special_chars: bool = False,
+    trim_whitespaces: bool = False,
     global_prefix: str = "",
     global_suffix: str = "",
 ) -> str:
@@ -48,12 +48,6 @@ def concatenate_texts(
     output. skip_empty=False keeps a connected empty string as a literal
     empty segment, while still ignoring unconnected channels.
     """
-    if parse_special_chars:
-        # Evaluate common escape sequences
-        separator = separator.replace("\\n", "\n").replace("\\t", "\t")
-        global_prefix = global_prefix.replace("\\n", "\n").replace("\\t", "\t")
-        global_suffix = global_suffix.replace("\\n", "\n").replace("\\t", "\t")
-
     parts = []
     if global_prefix:
         parts.append(global_prefix)
@@ -61,8 +55,8 @@ def concatenate_texts(
     for t in texts:
         if t is None:
             continue
-        if trim_whitespace:
-            t = t.strip()
+        if trim_whitespaces:
+            t = re.sub(r'\s+', ' ', t).strip()
         if skip_empty and not t:
             continue
         parts.append(t)
