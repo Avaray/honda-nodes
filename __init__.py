@@ -11,6 +11,7 @@ from comfy_api.latest import ComfyExtension, io
 from .nodes.text_concatenate import HondaTextConcatenate
 from .nodes.text_replace import HondaTextReplace
 from .nodes.text_split import HondaTextSplit
+from .nodes.text_switch import HondaTextSwitch
 
 
 class HondaNodesExtension(ComfyExtension):
@@ -19,6 +20,7 @@ class HondaNodesExtension(ComfyExtension):
             HondaTextConcatenate,
             HondaTextReplace,
             HondaTextSplit,
+            HondaTextSwitch,
         ]
 
 
