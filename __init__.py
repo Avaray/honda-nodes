@@ -12,6 +12,7 @@ from .nodes.text_concatenate import HondaTextConcatenate
 from .nodes.text_replace import HondaTextReplace
 from .nodes.text_split import HondaTextSplit
 from .nodes.text_switch import HondaTextSwitch
+from .nodes.text_preview import HondaTextPreview
 
 
 class HondaNodesExtension(ComfyExtension):
@@ -21,6 +22,7 @@ class HondaNodesExtension(ComfyExtension):
             HondaTextReplace,
             HondaTextSplit,
             HondaTextSwitch,
+            HondaTextPreview,
         ]
 
 
