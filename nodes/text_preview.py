@@ -14,7 +14,7 @@ class HondaTextPreview(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="Honda_TextPreview",
-            display_name="🔤 Text Preview ⛔️ BROKEN",
+            display_name="🔤 Text Preview",
             category="⚡️ Honda Nodes/🔤 Text",
             description="Displays the input text directly on the node body and passes it through.",
             is_output_node=True,
