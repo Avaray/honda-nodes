@@ -2,7 +2,21 @@
 "Text Case Switch" - Schema V3 node definition.
 
 Works like a switch statement in programming. Evaluates `match_text` against
-several cases and returns the corresponding output, falling back to a default.
+a user-defined list of cases (written one per line) and returns the
+corresponding output, falling back to a default.
+
+Each line in the 'Cases' field follows the format:
+    <case_value> | <output_value>
+
+Lines that do not contain the separator are silently ignored.
+Empty lines are ignored too.
+
+Example:
+    photo | realistic photography, shot on Canon 5D
+    anime | anime style illustration, cel shading
+    painting | oil painting on canvas
+
+The separator character can be changed in the 'Separator' field.
 """
 
 from comfy_api.latest import io
@@ -15,19 +29,46 @@ class HondaTextCaseSwitch(io.ComfyNode):
             node_id="Honda_TextCaseSwitch",
             display_name="🔤 Text Case Switch",
             category="⚡️ Honda Nodes/🔤 Text",
-            description="Evaluates a text against multiple cases and returns the corresponding output.",
+            description=(
+                "Evaluates a text against a list of cases and returns the corresponding output. "
+                "Write one case per line in the format: case | output. "
+                "Falls back to 'Default Output' if no case matches."
+            ),
             inputs=[
                 io.String.Input(
                     "match_text",
                     force_input=True,
                     display_name="Match Text",
-                    tooltip="The base text to evaluate.",
+                    tooltip="The base text to evaluate against the cases.",
+                ),
+                io.String.Input(
+                    "cases",
+                    multiline=True,
+                    default="photo | realistic photography\nanime | anime illustration style",
+                    display_name="Cases",
+                    tooltip=(
+                        "One case per line, in the format: case | output\n"
+                        "Example:\n"
+                        "  photo | realistic photography\n"
+                        "  anime | anime illustration style\n"
+                        "Lines without the separator are ignored."
+                    ),
                 ),
                 io.String.Input(
                     "default_output",
                     multiline=True,
+                    default="",
                     display_name="Default Output",
                     tooltip="Output returned if none of the cases match.",
+                ),
+                io.String.Input(
+                    "separator",
+                    default="|",
+                    display_name="Separator",
+                    tooltip=(
+                        "The character (or string) that divides the case value "
+                        "from its output value in each line. Default is '|'."
+                    ),
                 ),
                 io.Boolean.Input(
                     "ignore_case",
@@ -39,23 +80,15 @@ class HondaTextCaseSwitch(io.ComfyNode):
                     "match_substring",
                     default=False,
                     display_name="Match Substring",
-                    tooltip="If enabled, matches if 'Case X' is anywhere inside the Match Text (like 'contains'). If disabled, matches only exact string.",
+                    tooltip=(
+                        "If enabled, a case matches whenever it appears anywhere inside the "
+                        "Match Text (like 'contains'). If disabled, only exact matches count."
+                    ),
                 ),
-                # Case 1
-                io.String.Input("case_1", default="", display_name="Case 1"),
-                io.String.Input("output_1", multiline=True, default="", display_name="Output 1"),
-                # Case 2
-                io.String.Input("case_2", default="", display_name="Case 2"),
-                io.String.Input("output_2", multiline=True, default="", display_name="Output 2"),
-                # Case 3
-                io.String.Input("case_3", default="", display_name="Case 3"),
-                io.String.Input("output_3", multiline=True, default="", display_name="Output 3"),
-                # Case 4
-                io.String.Input("case_4", default="", display_name="Case 4"),
-                io.String.Input("output_4", multiline=True, default="", display_name="Output 4"),
             ],
             outputs=[
                 io.String.Output(display_name="Output"),
+                io.Boolean.Output(display_name="Matched"),
             ],
         )
 
@@ -63,45 +96,43 @@ class HondaTextCaseSwitch(io.ComfyNode):
     def execute(
         cls,
         match_text: str,
+        cases: str,
         default_output: str,
+        separator: str,
         ignore_case: bool,
         match_substring: bool,
-        case_1: str,
-        output_1: str,
-        case_2: str,
-        output_2: str,
-        case_3: str,
-        output_3: str,
-        case_4: str,
-        output_4: str,
     ) -> io.NodeOutput:
         match_text = match_text or ""
+        cases = cases or ""
         default_output = default_output or ""
-        
-        # Prepare haystack
+        separator = separator or "|"
+
         haystack = match_text.lower() if ignore_case else match_text
 
-        # Group cases into a list of tuples for easy iteration
-        cases = [
-            (case_1, output_1),
-            (case_2, output_2),
-            (case_3, output_3),
-            (case_4, output_4),
-        ]
+        for raw_line in cases.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
 
-        for case_val, out_val in cases:
-            # Skip empty cases (so we don't accidentally match empty string)
+            # Skip lines that don't contain the separator
+            sep_idx = line.find(separator)
+            if sep_idx == -1:
+                continue
+
+            case_val = line[:sep_idx].strip()
+            out_val = line[sep_idx + len(separator):].strip()
+
             if not case_val:
                 continue
 
             needle = case_val.lower() if ignore_case else case_val
 
             if match_substring:
-                if needle in haystack:
-                    return io.NodeOutput(out_val or "")
+                matched = needle in haystack
             else:
-                if needle == haystack:
-                    return io.NodeOutput(out_val or "")
+                matched = needle == haystack
 
-        # If no cases matched, return default
-        return io.NodeOutput(default_output)
+            if matched:
+                return io.NodeOutput(out_val, True)
+
+        return io.NodeOutput(default_output, False)
