@@ -7,13 +7,14 @@ Custom node pack for ComfyUI.
 This package targets ComfyUI Nodes 2.0 (Schema V3) via `comfy_api.latest`.
 """
 
-from comfy_api.latest import ComfyExtension, io
+from comfy_api.v0_0_2 import ComfyExtension, io
 from .nodes.text_concatenate import HondaTextConcatenate
 from .nodes.text_replace import HondaTextReplace
 from .nodes.text_split import HondaTextSplit
 from .nodes.text_switch import HondaTextSwitch
 from .nodes.text_preview import HondaTextPreview
 from .nodes.text import HondaText
+from .nodes.text_match import HondaTextMatch
 
 
 class HondaNodesExtension(ComfyExtension):
@@ -21,6 +22,7 @@ class HondaNodesExtension(ComfyExtension):
         return [
             HondaText,
             HondaTextConcatenate,
+            HondaTextMatch,
             HondaTextReplace,
             HondaTextSplit,
             HondaTextSwitch,
