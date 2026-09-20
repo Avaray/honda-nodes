@@ -8,14 +8,14 @@ This package targets ComfyUI Nodes 2.0 (Schema V3) via `comfy_api.latest`.
 """
 
 from comfy_api.latest import ComfyExtension, io
-from .nodes.text_concatenate import HondaTextConcatenate
-from .nodes.text_replace import HondaTextReplace
-from .nodes.text_split import HondaTextSplit
-from .nodes.text_switch import HondaTextSwitch
-from .nodes.text_case_switch import HondaTextCaseSwitch
-from .nodes.text_preview import HondaTextPreview
-from .nodes.text import HondaText
-from .nodes.text_match import HondaTextMatch
+from .nodes.text.text_concatenate import HondaTextConcatenate
+from .nodes.text.text_replace import HondaTextReplace
+from .nodes.text.text_split import HondaTextSplit
+from .nodes.text.text_switch import HondaTextSwitch
+from .nodes.text.text_case_switch import HondaTextCaseSwitch
+from .nodes.text.text_preview import HondaTextPreview
+from .nodes.text.text import HondaText
+from .nodes.text.text_match import HondaTextMatch
 
 
 class HondaNodesExtension(ComfyExtension):
