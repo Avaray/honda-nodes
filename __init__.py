@@ -12,6 +12,7 @@ from .nodes.text_concatenate import HondaTextConcatenate
 from .nodes.text_replace import HondaTextReplace
 from .nodes.text_split import HondaTextSplit
 from .nodes.text_switch import HondaTextSwitch
+from .nodes.text_case_switch import HondaTextCaseSwitch
 from .nodes.text_preview import HondaTextPreview
 from .nodes.text import HondaText
 from .nodes.text_match import HondaTextMatch
@@ -26,6 +27,7 @@ class HondaNodesExtension(ComfyExtension):
             HondaTextReplace,
             HondaTextSplit,
             HondaTextSwitch,
+            HondaTextCaseSwitch,
             HondaTextPreview,
         ]
 
