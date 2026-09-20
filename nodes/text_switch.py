@@ -10,13 +10,13 @@ class HondaTextSwitch(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="Honda_TextSwitch",
-            display_name="🔤 Text Switch (Conditional) ♻️ WIP",
+            display_name="🔤 Text Conditional Switch",
             category="⚡️ Honda Nodes/🔤 Text",
             description="Outputs one of two text strings based on a boolean condition.",
             inputs=[
                 io.Boolean.Input(
                     "condition",
-                    default=True,
+                    force_input=True,
                     display_name="Condition",
                     tooltip="If True, outputs Text A. If False, outputs Text B.",
                 ),
