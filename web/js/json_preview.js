@@ -17,38 +17,36 @@ function makePath(parentPath, key, isArray) {
     }
 }
 
-// Build copy button DOM element
-function buildCopyButton(path) {
-    const copyBtn = document.createElement("span");
-    copyBtn.innerHTML = " 📋";
-    copyBtn.style.cursor = "pointer";
-    copyBtn.style.opacity = "0";
-    copyBtn.style.transition = "opacity 0.2s";
+// Build an icon button for copying text
+function buildIconBtn(textToCopy, title, icon) {
+    const btn = document.createElement("span");
+    btn.innerHTML = " " + icon;
+    btn.style.cursor = "pointer";
+    btn.style.opacity = "0";
+    btn.style.transition = "opacity 0.2s";
+    btn.title = title;
     
-    const finalPath = path || ".";
-    copyBtn.title = "Copy path: " + finalPath;
-    
-    copyBtn.onclick = (e) => {
+    btn.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        navigator.clipboard.writeText(finalPath).catch(err => console.error("Copy failed", err));
-        const old = copyBtn.innerHTML;
-        copyBtn.innerHTML = " ✔️";
-        setTimeout(() => copyBtn.innerHTML = old, 1000);
+        navigator.clipboard.writeText(textToCopy).catch(err => console.error("Copy failed", err));
+        const old = btn.innerHTML;
+        btn.innerHTML = " ✔️";
+        setTimeout(() => btn.innerHTML = old, 1000);
     };
-    return copyBtn;
+    return btn;
 }
 
 function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false, autoCollapseGetter) {
     const currentPath = makePath(parentPath, key, isArrayChild);
 
-    if (obj === null) return createNode(key, "null", "gray", currentPath);
-    if (typeof obj === "boolean") return createNode(key, obj, "#d33682", currentPath);
-    if (typeof obj === "number") return createNode(key, obj, "#cb4b16", currentPath);
-    if (typeof obj === "string") return createNode(key, `"${obj}"`, "#859900", currentPath);
+    if (obj === null) return createNode(key, "null", "gray", currentPath, obj);
+    if (typeof obj === "boolean") return createNode(key, obj, "#d33682", currentPath, obj);
+    if (typeof obj === "number") return createNode(key, obj, "#cb4b16", currentPath, obj);
+    if (typeof obj === "string") return createNode(key, `"${obj}"`, "#859900", currentPath, obj);
     
     if (Array.isArray(obj)) {
-        if (obj.length === 0) return createNode(key, "[]", "var(--input-text, #ddd)", currentPath);
+        if (obj.length === 0) return createNode(key, "[]", "var(--input-text, #ddd)", currentPath, obj);
         
         const details = document.createElement("details");
         details.open = key === null; 
@@ -60,10 +58,13 @@ function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false,
         summary.style.color = "var(--input-text, #ddd)";
         summary.style.position = "relative";
         
-        const copyBtn = buildCopyButton(currentPath);
-        summary.appendChild(copyBtn);
-        summary.onmouseenter = () => copyBtn.style.opacity = "0.7";
-        summary.onmouseleave = () => copyBtn.style.opacity = "0";
+        const copyPathBtn = buildIconBtn(currentPath || ".", "Copy path: " + (currentPath || "."), "📋");
+        const copyValBtn = buildIconBtn(JSON.stringify(obj, null, 2), "Copy value (JSON)", "📄");
+        
+        summary.appendChild(copyPathBtn);
+        summary.appendChild(copyValBtn);
+        summary.onmouseenter = () => { copyPathBtn.style.opacity = "0.7"; copyValBtn.style.opacity = "0.7"; };
+        summary.onmouseleave = () => { copyPathBtn.style.opacity = "0"; copyValBtn.style.opacity = "0"; };
 
         details.appendChild(summary);
         
@@ -97,7 +98,7 @@ function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false,
     
     // Object
     const keys = Object.keys(obj);
-    if (keys.length === 0) return createNode(key, "{}", "var(--input-text, #ddd)", currentPath);
+    if (keys.length === 0) return createNode(key, "{}", "var(--input-text, #ddd)", currentPath, obj);
     
     const details = document.createElement("details");
     details.open = key === null;
@@ -109,10 +110,13 @@ function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false,
     summary.style.color = "var(--input-text, #ddd)";
     summary.style.position = "relative";
 
-    const copyBtn = buildCopyButton(currentPath);
-    summary.appendChild(copyBtn);
-    summary.onmouseenter = () => copyBtn.style.opacity = "0.7";
-    summary.onmouseleave = () => copyBtn.style.opacity = "0";
+    const copyPathBtn = buildIconBtn(currentPath || ".", "Copy path: " + (currentPath || "."), "📋");
+    const copyValBtn = buildIconBtn(JSON.stringify(obj, null, 2), "Copy value (JSON)", "📄");
+    
+    summary.appendChild(copyPathBtn);
+    summary.appendChild(copyValBtn);
+    summary.onmouseenter = () => { copyPathBtn.style.opacity = "0.7"; copyValBtn.style.opacity = "0.7"; };
+    summary.onmouseleave = () => { copyPathBtn.style.opacity = "0"; copyValBtn.style.opacity = "0"; };
 
     details.appendChild(summary);
     
@@ -144,7 +148,7 @@ function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false,
     return details;
 }
 
-function createNode(key, value, color, path) {
+function createNode(key, displayValue, color, path, rawValue) {
     const div = document.createElement("div");
     div.style.fontFamily = "monospace";
     div.style.fontSize = "12px";
@@ -154,7 +158,7 @@ function createNode(key, value, color, path) {
     div.style.display = "flex";
     div.style.alignItems = "center";
     
-    const safeValue = String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const safeValue = String(displayValue).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     
     const textSpan = document.createElement("span");
     if (key !== null) {
@@ -163,12 +167,19 @@ function createNode(key, value, color, path) {
         textSpan.innerHTML = `<span style="color:${color}">${safeValue}</span>`;
     }
     
-    const copyBtn = buildCopyButton(path);
+    const copyPathBtn = buildIconBtn(path || ".", "Copy path: " + (path || "."), "📋");
+    const copyValBtn = buildIconBtn(
+        typeof rawValue === "object" ? JSON.stringify(rawValue, null, 2) : String(rawValue), 
+        "Copy value", 
+        "📄"
+    );
+    
     div.appendChild(textSpan);
-    div.appendChild(copyBtn);
+    div.appendChild(copyPathBtn);
+    div.appendChild(copyValBtn);
 
-    div.onmouseenter = () => copyBtn.style.opacity = "0.7";
-    div.onmouseleave = () => copyBtn.style.opacity = "0";
+    div.onmouseenter = () => { copyPathBtn.style.opacity = "0.7"; copyValBtn.style.opacity = "0.7"; };
+    div.onmouseleave = () => { copyPathBtn.style.opacity = "0"; copyValBtn.style.opacity = "0"; };
 
     return div;
 }
@@ -273,7 +284,6 @@ app.registerExtension({
         const onOutputsUpdated = nodeType.prototype.onNodeOutputsUpdated;
         nodeType.prototype.onNodeOutputsUpdated = function (outputs) {
             onOutputsUpdated?.apply(this, arguments);
-            // In modern ComfyUI, onNodeOutputsUpdated handles node reload states
             const message = outputs?.[this.id];
             if (message?.json_tree && this._hondaJsonPreviewContainer) {
                 const val = Array.isArray(message.json_tree) ? message.json_tree[0] : message.json_tree;
