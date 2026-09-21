@@ -11,6 +11,9 @@ class HondaExtractMetadata(io.ComfyNode):
             display_name="🏷️ Extract Metadata",
             category="⚡️ Honda Nodes/🏷️ Metadata",
             description="Extracts metadata from image and video files using the 'mex' CLI tool.",
+            # Output node: runs even when nothing is connected to "Output",
+            # so the in-node preview always works.
+            is_output_node=True,
             inputs=[
                 io.String.Input(
                     "file_path",
@@ -65,6 +68,18 @@ class HondaExtractMetadata(io.ComfyNode):
 
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8', errors='replace')
-            return io.NodeOutput(result.stdout.strip())
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Error executing mex (exit code {e.returncode}): {e.stderr or e.stdout or str(e)}")
+
+        text = result.stdout.strip()
+
+        # The frontend (extract_metadata.js) reads these keys in onExecuted():
+        #   resolved_path  -> the path this run actually used (also when it came from a link)
+        #   metadata_text  -> what goes into the preview box
+        return io.NodeOutput(
+            text,
+            ui={
+                "resolved_path": (file_path,),
+                "metadata_text": (text,),
+            },
+        )
