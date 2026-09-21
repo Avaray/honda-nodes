@@ -16,6 +16,15 @@ from .nodes.text.text_case_switch import HondaTextCaseSwitch
 from .nodes.text.text_preview import HondaTextPreview
 from .nodes.text.text import HondaText
 from .nodes.text.text_match import HondaTextMatch
+from .nodes.metadata.extract_metadata import HondaExtractMetadata
+from .nodes.metadata.write_metadata import HondaWriteMetadata
+from .nodes.image.load_image import HondaLoadImage
+from .nodes.image.save_image import HondaSaveImage
+from .nodes.json.json_get_value import HondaJSONGetValue
+from .nodes.json.json_set_key import HondaJSONSetKey
+from .nodes.json.json_delete_key import HondaJSONDeleteKey
+from .nodes.json.json_merge import HondaJSONMerge
+from .nodes.json.json_preview import HondaJSONPreview
 
 
 class HondaNodesExtension(ComfyExtension):
@@ -29,6 +38,15 @@ class HondaNodesExtension(ComfyExtension):
             HondaTextSwitch,
             HondaTextCaseSwitch,
             HondaTextPreview,
+            HondaExtractMetadata,
+            HondaWriteMetadata,
+            HondaLoadImage,
+            HondaSaveImage,
+            HondaJSONGetValue,
+            HondaJSONSetKey,
+            HondaJSONDeleteKey,
+            HondaJSONMerge,
+            HondaJSONPreview,
         ]
 
 
