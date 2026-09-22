@@ -30,7 +30,7 @@ class HondaSaveImage(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="Honda_SaveImage",
-            display_name="Save Image",
+            display_name="🖼 Save Image",
             category="⚡️ Honda Nodes/🖼 Image",
             description="Saves an image to disk, optionally injecting metadata via 'mex', and displays a preview in the UI.",
             is_output_node=True,

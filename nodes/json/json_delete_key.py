@@ -14,8 +14,8 @@ class HondaJSONDeleteKey(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="Honda_JSONDeleteKey",
-            display_name="JSON Delete Key",
-            category="⚡️ Honda Nodes/🔣 JSON",
+            display_name="📑 JSON Delete Key",
+            category="⚡️ Honda Nodes/📑 JSON",
             description="Removes a specific key from a JSON object.",
             inputs=[
                 io.String.Input(
@@ -44,6 +44,11 @@ class HondaJSONDeleteKey(io.ComfyNode):
             return io.NodeOutput("{}")
             
         key_path = (key_path or "").strip()
+        
+        # Auto-prepend a dot if the user just typed a key name
+        if key_path and key_path[0].isalnum():
+            key_path = f".{key_path}"
+
         if not key_path:
             return io.NodeOutput(json_data)
 

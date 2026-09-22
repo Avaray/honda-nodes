@@ -1,7 +1,5 @@
 # Honda Nodes - Ideas for Future Categories
 
-Based on the current structure of `honda-nodes` (focusing on utility, metadata, and data manipulation), here are several ideas for new node categories that would perfectly complement the existing toolset in ComfyUI:
-
 ## 1. 📁 File System (System Nodes)
 Nodes dedicated to managing how files and directories are handled, which is often a pain point in complex ComfyUI workflows.
 * **Create Directory:** Automatically generates timestamped folders (e.g., `outputs/2026-09-21/`) and outputs the path for your Save Image node.

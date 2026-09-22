@@ -25,7 +25,7 @@ from .nodes.json.json_set_key import HondaJSONSetKey
 from .nodes.json.json_delete_key import HondaJSONDeleteKey
 from .nodes.json.json_merge import HondaJSONMerge
 from .nodes.json.json_preview import HondaJSONPreview
-
+from .nodes.json.json_validate import HondaJSONValidate
 
 class HondaNodesExtension(ComfyExtension):
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
@@ -47,6 +47,7 @@ class HondaNodesExtension(ComfyExtension):
             HondaJSONDeleteKey,
             HondaJSONMerge,
             HondaJSONPreview,
+            HondaJSONValidate,
         ]
 
 

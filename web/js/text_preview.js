@@ -1,6 +1,6 @@
 import { app } from "../../../scripts/app.js";
 
-const NODE_TYPE = "Honda_TextPreview";
+const PREVIEW_NODES = ["Honda_TextPreview", "Honda_JSONGetValue"];
 
 let nativeAdd = null;
 let nativeUpdate = null;
@@ -20,43 +20,43 @@ app.registerExtension({
     },
 
     async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (nodeData.name !== NODE_TYPE) return;
+        if (!PREVIEW_NODES.includes(nodeData.name)) return;
 
         // Create widget on node creation
         const onNodeCreated = nodeType.prototype.onNodeCreated;
         nodeType.prototype.onNodeCreated = function () {
             onNodeCreated?.apply(this, arguments);
 
-            if (nativeAdd) {
-                nativeAdd(this);
-            } else {
-                const container = document.createElement("div");
-                container.style.padding = "4px";
-                container.style.width = "100%";
+            const container = document.createElement("div");
+            container.style.padding = "4px";
+            container.style.width = "100%";
+            // We give it a flexible height setup so it resizes well
+            container.style.height = "100%";
+            container.style.display = "flex";
 
-                const textarea = document.createElement("textarea");
-                textarea.style.width = "100%";
-                textarea.style.minHeight = "60px";
-                textarea.style.resize = "vertical";
-                textarea.style.background = "var(--comfy-input-bg, #222)";
-                textarea.style.color = "var(--input-text, #ddd)";
-                textarea.style.border = "1px solid var(--border-color, #444)";
-                textarea.style.borderRadius = "4px";
-                textarea.style.fontFamily = "monospace";
-                textarea.style.fontSize = "12px";
-                textarea.style.padding = "6px";
-                textarea.style.boxSizing = "border-box";
-                textarea.readOnly = true;
-                textarea.placeholder = "(output will appear here after execution)";
+            const textarea = document.createElement("textarea");
+            textarea.style.width = "100%";
+            textarea.style.flex = "1";
+            textarea.style.minHeight = "60px";
+            textarea.style.resize = "none"; // Disable manual resize to let ComfyUI layout handle it
+            textarea.style.background = "var(--comfy-input-bg, #222)";
+            textarea.style.color = "var(--input-text, #ddd)";
+            textarea.style.border = "1px solid var(--border-color, #444)";
+            textarea.style.borderRadius = "4px";
+            textarea.style.fontFamily = "monospace";
+            textarea.style.fontSize = "12px";
+            textarea.style.padding = "6px";
+            textarea.style.boxSizing = "border-box";
+            textarea.readOnly = true;
+            textarea.placeholder = "(output will appear here after execution)";
 
-                container.appendChild(textarea);
-                this._hondaPreviewTextarea = textarea;
+            container.appendChild(textarea);
+            this._hondaPreviewTextarea = textarea;
 
-                this.addDOMWidget("text_preview_widget", "div", container, {
-                    getValue: () => textarea.value,
-                    setValue: (v) => { textarea.value = v ?? ""; },
-                });
-            }
+            this.addDOMWidget("text_preview_widget", "div", container, {
+                getValue: () => textarea.value,
+                setValue: (v) => { textarea.value = v ?? ""; },
+            });
         };
 
         // Update widget on node execution
@@ -64,9 +64,7 @@ app.registerExtension({
         nodeType.prototype.onExecuted = function (message) {
             onExecuted?.apply(this, arguments);
 
-            if (nativeUpdate) {
-                nativeUpdate(this, message);
-            } else if (this._hondaPreviewTextarea) {
+            if (this._hondaPreviewTextarea) {
                 if (!message?.text) return;
                 const val = Array.isArray(message.text) ? message.text[0] : message.text;
                 this._hondaPreviewTextarea.value = val ?? "";
@@ -79,10 +77,8 @@ app.registerExtension({
         // Also update when outputs are bulk-updated (e.g. on workflow reload)
         for (const [nodeId, message] of Object.entries(outputs)) {
             const node = app.graph.getNodeById(nodeId);
-            if (node?.type === NODE_TYPE) {
-                if (nativeUpdate) {
-                    nativeUpdate(node, message);
-                } else if (node._hondaPreviewTextarea) {
+            if (node && PREVIEW_NODES.includes(node.type)) {
+                if (node._hondaPreviewTextarea) {
                     if (!message?.text) continue;
                     const val = Array.isArray(message.text) ? message.text[0] : message.text;
                     node._hondaPreviewTextarea.value = val ?? "";

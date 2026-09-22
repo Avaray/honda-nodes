@@ -14,14 +14,16 @@ class HondaJSONGetValue(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="Honda_JSONGetValue",
-            display_name="JSON Get Value",
-            category="⚡️ Honda Nodes/🔣 JSON",
+            display_name="📑 JSON Get Value",
+            category="⚡️ Honda Nodes/📑 JSON",
             description="Extracts a value from a JSON string using the 'jq' CLI tool.",
+            is_output_node=True,
             inputs=[
                 io.String.Input(
                     "json_data",
                     default="{}",
                     multiline=True,
+                    force_input=True,
                     display_name="JSON Data",
                     tooltip="The JSON string to process.",
                 ),
@@ -47,9 +49,13 @@ class HondaJSONGetValue(io.ComfyNode):
     def execute(cls, json_data: str, jq_filter: str, raw_output: bool) -> io.NodeOutput:
         json_data = json_data or ""
         if not json_data.strip():
-            return io.NodeOutput("")
+            return io.NodeOutput("", ui={"text": ("",)})
             
         jq_filter = (jq_filter or ".").strip()
+        
+        # Auto-prepend a dot if the user just typed a key name (e.g., 'file' -> '.file')
+        if jq_filter and jq_filter[0].isalnum():
+            jq_filter = f".{jq_filter}"
 
         jq_path = find_jq()
         if not jq_path:
@@ -73,7 +79,8 @@ class HondaJSONGetValue(io.ComfyNode):
                 encoding="utf-8",
                 errors="replace",
             )
-            return io.NodeOutput(result.stdout.strip())
+            final_text = result.stdout.strip()
+            return io.NodeOutput(final_text, ui={"text": (final_text,)})
         except subprocess.CalledProcessError as e:
             raise RuntimeError(
                 f"jq failed (exit code {e.returncode}): {e.stderr or e.stdout or str(e)}"

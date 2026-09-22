@@ -22,9 +22,16 @@ function buildIconBtn(textToCopy, title, icon) {
     const btn = document.createElement("span");
     btn.innerHTML = " " + icon;
     btn.style.cursor = "pointer";
-    btn.style.opacity = "0";
-    btn.style.transition = "opacity 0.2s";
+    btn.style.opacity = "0.3"; // Always visible
+    btn.style.transition = "opacity 0.2s, transform 0.1s";
     btn.title = title;
+    // Prevent it from shrinking or wrapping weirdly
+    btn.style.display = "inline-block";
+    btn.style.userSelect = "none";
+    
+    // Highlight when hovered
+    btn.addEventListener("mouseenter", () => btn.style.opacity = "1");
+    btn.addEventListener("mouseleave", () => btn.style.opacity = "0.6");
     
     btn.onclick = (e) => {
         e.preventDefault();
@@ -37,13 +44,19 @@ function buildIconBtn(textToCopy, title, icon) {
     return btn;
 }
 
-function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false, autoCollapseGetter) {
+function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false, autoCollapseGetter, truncateGetter) {
     const currentPath = makePath(parentPath, key, isArrayChild);
 
     if (obj === null) return createNode(key, "null", "gray", currentPath, obj);
     if (typeof obj === "boolean") return createNode(key, obj, "#d33682", currentPath, obj);
     if (typeof obj === "number") return createNode(key, obj, "#cb4b16", currentPath, obj);
-    if (typeof obj === "string") return createNode(key, `"${obj}"`, "#859900", currentPath, obj);
+    if (typeof obj === "string") {
+        let strToShow = obj;
+        if (truncateGetter && truncateGetter() && strToShow.length > 80) {
+            strToShow = strToShow.substring(0, 80) + "...";
+        }
+        return createNode(key, `"${strToShow}"`, "#859900", currentPath, obj);
+    }
     
     if (Array.isArray(obj)) {
         if (obj.length === 0) return createNode(key, "[]", "var(--input-text, #ddd)", currentPath, obj);
@@ -52,19 +65,32 @@ function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false,
         details.open = key === null; 
         
         const summary = document.createElement("summary");
-        summary.innerHTML = key !== null ? `<strong>${key}</strong>: Array(${obj.length})` : `Array(${obj.length})`;
         summary.style.cursor = "pointer";
         summary.style.userSelect = "none";
         summary.style.color = "var(--input-text, #ddd)";
         summary.style.position = "relative";
         
+        // Group key and buttons to prevent wrapping
+        const headerSpan = document.createElement("span");
+        headerSpan.style.whiteSpace = "nowrap";
+
+        if (key !== null) {
+            const keySpan = document.createElement("span");
+            keySpan.innerHTML = `<strong>${key}</strong>`;
+            headerSpan.appendChild(keySpan);
+        }
+
         const copyPathBtn = buildIconBtn(currentPath || ".", "Copy path: " + (currentPath || "."), "📋");
         const copyValBtn = buildIconBtn(JSON.stringify(obj, null, 2), "Copy value (JSON)", "📄");
         
-        summary.appendChild(copyPathBtn);
-        summary.appendChild(copyValBtn);
-        summary.onmouseenter = () => { copyPathBtn.style.opacity = "0.7"; copyValBtn.style.opacity = "0.7"; };
-        summary.onmouseleave = () => { copyPathBtn.style.opacity = "0"; copyValBtn.style.opacity = "0"; };
+        headerSpan.appendChild(copyPathBtn);
+        headerSpan.appendChild(copyValBtn);
+
+        const typeSpan = document.createElement("span");
+        typeSpan.innerHTML = key !== null ? `: Array(${obj.length})` : `Array(${obj.length})`;
+
+        summary.appendChild(headerSpan);
+        summary.appendChild(typeSpan);
 
         details.appendChild(summary);
         
@@ -74,7 +100,7 @@ function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false,
         container.style.paddingLeft = "8px";
         
         obj.forEach((item, index) => {
-            container.appendChild(buildJsonTree(item, index, currentPath, true, autoCollapseGetter));
+            container.appendChild(buildJsonTree(item, index, currentPath, true, autoCollapseGetter, truncateGetter));
         });
         
         details.appendChild(container);
@@ -104,19 +130,32 @@ function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false,
     details.open = key === null;
     
     const summary = document.createElement("summary");
-    summary.innerHTML = key !== null ? `<strong>${key}</strong>: Object` : `Object`;
     summary.style.cursor = "pointer";
     summary.style.userSelect = "none";
     summary.style.color = "var(--input-text, #ddd)";
     summary.style.position = "relative";
 
+    // Group key and buttons to prevent wrapping
+    const headerSpan = document.createElement("span");
+    headerSpan.style.whiteSpace = "nowrap";
+
+    if (key !== null) {
+        const keySpan = document.createElement("span");
+        keySpan.innerHTML = `<strong>${key}</strong>`;
+        headerSpan.appendChild(keySpan);
+    }
+
     const copyPathBtn = buildIconBtn(currentPath || ".", "Copy path: " + (currentPath || "."), "📋");
     const copyValBtn = buildIconBtn(JSON.stringify(obj, null, 2), "Copy value (JSON)", "📄");
     
-    summary.appendChild(copyPathBtn);
-    summary.appendChild(copyValBtn);
-    summary.onmouseenter = () => { copyPathBtn.style.opacity = "0.7"; copyValBtn.style.opacity = "0.7"; };
-    summary.onmouseleave = () => { copyPathBtn.style.opacity = "0"; copyValBtn.style.opacity = "0"; };
+    headerSpan.appendChild(copyPathBtn);
+    headerSpan.appendChild(copyValBtn);
+
+    const typeSpan = document.createElement("span");
+    typeSpan.innerHTML = key !== null ? `: Object` : `Object`;
+
+    summary.appendChild(headerSpan);
+    summary.appendChild(typeSpan);
 
     details.appendChild(summary);
     
@@ -126,7 +165,7 @@ function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false,
     container.style.paddingLeft = "8px";
     
     keys.forEach(k => {
-        container.appendChild(buildJsonTree(obj[k], k, currentPath, false, autoCollapseGetter));
+        container.appendChild(buildJsonTree(obj[k], k, currentPath, false, autoCollapseGetter, truncateGetter));
     });
     
     details.appendChild(container);
@@ -154,17 +193,22 @@ function createNode(key, displayValue, color, path, rawValue) {
     div.style.fontSize = "12px";
     div.style.lineHeight = "1.5";
     div.style.whiteSpace = "pre-wrap";
+    div.style.wordBreak = "break-all"; // Ensures super long strings wrap neatly
     div.style.color = "var(--input-text, #ddd)";
+    // Use flex with flex-start so icons don't drift vertically on wrapped lines
     div.style.display = "flex";
-    div.style.alignItems = "center";
+    div.style.alignItems = "flex-start";
     
     const safeValue = String(displayValue).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     
-    const textSpan = document.createElement("span");
+    // The magic wrapper that prevents the key and buttons from wrapping
+    const headerSpan = document.createElement("span");
+    headerSpan.style.whiteSpace = "nowrap";
+    
     if (key !== null) {
-        textSpan.innerHTML = `<strong>${key}</strong>: <span style="color:${color}">${safeValue}</span>`;
-    } else {
-        textSpan.innerHTML = `<span style="color:${color}">${safeValue}</span>`;
+        const keySpan = document.createElement("span");
+        keySpan.innerHTML = `<strong>${key}</strong>`;
+        headerSpan.appendChild(keySpan);
     }
     
     const copyPathBtn = buildIconBtn(path || ".", "Copy path: " + (path || "."), "📋");
@@ -173,13 +217,21 @@ function createNode(key, displayValue, color, path, rawValue) {
         "Copy value", 
         "📄"
     );
+    headerSpan.appendChild(copyPathBtn);
+    headerSpan.appendChild(copyValBtn);
     
-    div.appendChild(textSpan);
-    div.appendChild(copyPathBtn);
-    div.appendChild(copyValBtn);
-
-    div.onmouseenter = () => { copyPathBtn.style.opacity = "0.7"; copyValBtn.style.opacity = "0.7"; };
-    div.onmouseleave = () => { copyPathBtn.style.opacity = "0"; copyValBtn.style.opacity = "0"; };
+    const sepSpan = document.createElement("span");
+    sepSpan.innerText = key !== null ? ": " : "";
+    sepSpan.style.whiteSpace = "pre";
+    headerSpan.appendChild(sepSpan);
+    
+    const valSpan = document.createElement("span");
+    valSpan.style.color = color;
+    valSpan.innerHTML = safeValue;
+    
+    // Assemble the row
+    div.appendChild(headerSpan);
+    div.appendChild(valSpan);
 
     return div;
 }
@@ -200,7 +252,6 @@ app.registerExtension({
             container.style.width = "100%";
             container.style.height = "100%";
             container.style.minHeight = "120px";
-            container.style.maxHeight = "400px";
             container.style.overflow = "hidden";
             container.style.display = "flex";
             container.style.flexDirection = "column";
@@ -209,7 +260,7 @@ app.registerExtension({
             container.style.borderRadius = "4px";
             container.style.boxSizing = "border-box";
 
-            // Toolbar for auto-collapse toggle
+            // Toolbar for auto-collapse toggle and truncate
             const toolbar = document.createElement("div");
             toolbar.style.display = "flex";
             toolbar.style.alignItems = "center";
@@ -230,24 +281,58 @@ app.registerExtension({
             label.style.fontFamily = "sans-serif";
             label.style.cursor = "pointer";
             label.style.userSelect = "none";
+            label.style.marginRight = "12px"; // Add space before next option
             
+            const truncateCheckbox = document.createElement("input");
+            truncateCheckbox.type = "checkbox";
+            truncateCheckbox.id = "honda_json_truncate_" + this.id;
+            truncateCheckbox.style.margin = "0 6px 0 0";
+            // Checkbox event listener: re-render tree when toggled
+            truncateCheckbox.addEventListener("change", () => {
+                if (this._hondaJsonRawValue) {
+                    renderJson(this, this._hondaJsonRawValue);
+                }
+            });
+
+            const truncateLabel = document.createElement("label");
+            truncateLabel.htmlFor = truncateCheckbox.id;
+            truncateLabel.innerText = "Limit string length";
+            truncateLabel.style.color = "var(--input-text, #ccc)";
+            truncateLabel.style.fontSize = "12px";
+            truncateLabel.style.fontFamily = "sans-serif";
+            truncateLabel.style.cursor = "pointer";
+            truncateLabel.style.userSelect = "none";
+
             toolbar.appendChild(checkbox);
             toolbar.appendChild(label);
+            toolbar.appendChild(truncateCheckbox);
+            toolbar.appendChild(truncateLabel);
             container.appendChild(toolbar);
+
+            const relativeWrapper = document.createElement("div");
+            relativeWrapper.style.flex = "1";
+            relativeWrapper.style.position = "relative";
 
             const innerBox = document.createElement("div");
             innerBox.style.color = "var(--input-text, #999)";
             innerBox.style.fontFamily = "monospace";
             innerBox.style.fontSize = "12px";
+            // Isolate scrollable content height from parent node
+            innerBox.style.position = "absolute";
+            innerBox.style.top = "0";
+            innerBox.style.left = "0";
+            innerBox.style.right = "0";
+            innerBox.style.bottom = "0";
             innerBox.style.overflow = "auto";
-            innerBox.style.flex = "1";
             innerBox.innerHTML = "<i>(JSON tree will appear here after execution)</i>";
             
-            container.appendChild(innerBox);
+            relativeWrapper.appendChild(innerBox);
+            container.appendChild(relativeWrapper);
             
             this._hondaJsonPreviewContainer = innerBox;
             this._hondaJsonRawValue = "";
             this._hondaJsonAutoCollapseGetter = () => checkbox.checked;
+            this._hondaJsonTruncateGetter = () => truncateCheckbox.checked;
 
             this.addDOMWidget("json_preview_widget", "div", container, {
                 getValue: () => this._hondaJsonRawValue,
@@ -261,7 +346,7 @@ app.registerExtension({
                 const parsed = JSON.parse(val);
                 node._hondaJsonPreviewContainer.innerHTML = "";
                 node._hondaJsonPreviewContainer.appendChild(
-                    buildJsonTree(parsed, null, null, false, node._hondaJsonAutoCollapseGetter)
+                    buildJsonTree(parsed, null, null, false, node._hondaJsonAutoCollapseGetter, node._hondaJsonTruncateGetter)
                 );
             } catch (e) {
                 node._hondaJsonPreviewContainer.innerHTML = `<span style="color:red">Invalid JSON: ${e.message}</span>`;
@@ -303,7 +388,7 @@ app.registerExtension({
                     const parsed = JSON.parse(val);
                     node._hondaJsonPreviewContainer.innerHTML = "";
                     node._hondaJsonPreviewContainer.appendChild(
-                        buildJsonTree(parsed, null, null, false, node._hondaJsonAutoCollapseGetter)
+                        buildJsonTree(parsed, null, null, false, node._hondaJsonAutoCollapseGetter, node._hondaJsonTruncateGetter)
                     );
                 } catch (e) {
                     node._hondaJsonPreviewContainer.innerHTML = `<span style="color:red">Invalid JSON: ${e.message}</span>`;

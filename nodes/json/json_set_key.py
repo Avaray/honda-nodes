@@ -14,8 +14,8 @@ class HondaJSONSetKey(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="Honda_JSONSetKey",
-            display_name="JSON Set Key",
-            category="⚡️ Honda Nodes/🔣 JSON",
+            display_name="📑 JSON Set Key",
+            category="⚡️ Honda Nodes/📑 JSON",
             description="Sets or updates a value at a specific key path in a JSON string.",
             inputs=[
                 io.String.Input(
@@ -57,6 +57,11 @@ class HondaJSONSetKey(io.ComfyNode):
             json_data = "{}"
             
         key_path = (key_path or ".").strip()
+        
+        # Auto-prepend a dot if the user just typed a key name
+        if key_path and key_path[0].isalnum():
+            key_path = f".{key_path}"
+
         value = value or ""
 
         jq_path = find_jq()

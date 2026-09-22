@@ -12,8 +12,8 @@ class HondaJSONPreview(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="Honda_JSONPreview",
-            display_name="👀 JSON Preview",
-            category="⚡️ Honda Nodes/🔣 JSON",
+            display_name="📑 JSON Preview",
+            category="⚡️ Honda Nodes/📑 JSON",
             description="Displays the input JSON as an interactive, collapsible tree on the node body.",
             is_output_node=True,
             inputs=[

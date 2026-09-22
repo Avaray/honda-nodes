@@ -14,8 +14,8 @@ class HondaJSONMerge(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="Honda_JSONMerge",
-            display_name="JSON Merge",
-            category="⚡️ Honda Nodes/🔣 JSON",
+            display_name="📑 JSON Merge",
+            category="⚡️ Honda Nodes/📑 JSON",
             description="Merges two JSON objects deeply.",
             inputs=[
                 io.String.Input(
