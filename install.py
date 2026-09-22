@@ -51,24 +51,23 @@ def install_dependencies():
     # ---------------------------------------------------------
     # 2. Download `ime`
     # ---------------------------------------------------------
-    # TODO: Update these URLs to point to your actual GitHub repository releases!
-    ime_version = "v1.0.0" 
-    ime_base_url = "https://github.com/YOUR_GITHUB_USERNAME/image-metadata-editor/releases/download"
-    
+    ime_version = "v1.0.0"
+    ime_base_url = "https://github.com/Avaray/image-metadata-editor/releases/download"
+
     if system == "windows":
-        ime_url = f"{ime_base_url}/{ime_version}/ime-windows.exe"
+        ime_url = f"{ime_base_url}/{ime_version}/ime-windows-amd64.exe"
         ime_dest = os.path.join(BIN_DIR, "ime.exe")
     elif system == "darwin":
-        ime_url = f"{ime_base_url}/{ime_version}/ime-macos"
+        is_arm = "arm" in arch or "aarch" in arch
+        ime_url = f"{ime_base_url}/{ime_version}/ime-darwin-{'arm64' if is_arm else 'amd64'}"
         ime_dest = os.path.join(BIN_DIR, "ime")
-    else:
-        ime_url = f"{ime_base_url}/{ime_version}/ime-linux"
+    else:  # linux
+        is_arm = "arm" in arch or "aarch" in arch
+        ime_url = f"{ime_base_url}/{ime_version}/ime-linux-{'arm64' if is_arm else 'amd64'}"
         ime_dest = os.path.join(BIN_DIR, "ime")
 
     if not os.path.exists(ime_dest):
-        # UNCOMMENT the line below once you put your real repository URLs above
-        # download_binary(ime_url, ime_dest)
-        print("[Honda Nodes] Please configure the 'ime' GitHub URLs in install.py to enable automatic downloads.")
+        download_binary(ime_url, ime_dest)
     else:
         print(f"[Honda Nodes] ime is already installed at {ime_dest}")
 
