@@ -16,7 +16,7 @@ class HondaLoadImage(io.ComfyNode):
             node_id="Honda_LoadImage",
             display_name="🖼 Load Image",
             category="⚡️ Honda Nodes/🖼 Image",
-            description="Loads an image from the input folder and outputs the image data, mask, file path, and metadata.",
+            description="Loads an image from the input folder and outputs the image data, mask, file path, and metadata as JSON.",
             inputs=[
                 io.Combo.Input(
                     "image",
@@ -24,12 +24,6 @@ class HondaLoadImage(io.ComfyNode):
                     upload=io.UploadType.image,
                     image_folder=io.FolderType.input,
                     display_name="Image",
-                ),
-                io.Boolean.Input(
-                    "metadata_as_json",
-                    default=True,
-                    display_name="Metadata as JSON",
-                    tooltip="If True, outputs the metadata as JSON format using the 'mex' tool.",
                 ),
             ],
             outputs=[
@@ -41,7 +35,7 @@ class HondaLoadImage(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, image: str, metadata_as_json: bool) -> io.NodeOutput:
+    def execute(cls, image: str) -> io.NodeOutput:
         # Use standard ComfyUI LoadImage node functionality
         image_tensor, mask_tensor = LoadImage().load_image(image)
         
@@ -60,9 +54,8 @@ class HondaLoadImage(io.ComfyNode):
 
         metadata_text = ""
         if mex_path and os.path.exists(image_path):
-            cmd = [mex_path, image_path]
-            if metadata_as_json:
-                cmd.append("-j")
+            # Always output JSON format
+            cmd = [mex_path, image_path, "-j"]
             try:
                 result = subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8', errors='replace')
                 metadata_text = result.stdout.strip()

@@ -34,10 +34,9 @@ class HondaWriteMetadata(io.ComfyNode):
             display_name="🏷️ Write Metadata",
             category="⚡️ Honda Nodes/🏷️ Metadata",
             description=(
-                "Injects metadata tags into an image file (JPEG or PNG) using the 'mex' CLI tool. "
-                "Each line of the Metadata input must be in Key=Value format. "
-                "Lines that are empty or start with '#' are ignored. "
-                "Operates in-place by default; enable 'Write to new file' to leave the original untouched."
+                "Injects metadata tags into an image file using the 'mex' CLI tool. "
+                "Accepts a JSON object string where each key-value pair is written as metadata. "
+                "Operates in-place by default; provide an Output Path to leave the original untouched."
             ),
             inputs=[
                 io.String.Input(
@@ -48,14 +47,13 @@ class HondaWriteMetadata(io.ComfyNode):
                 ),
                 io.String.Input(
                     "metadata",
-                    default="",
+                    default="{}",
                     multiline=True,
-                    display_name="Metadata",
+                    display_name="Metadata (JSON)",
                     tooltip=(
-                        "Metadata to write. One Key=Value pair per line.\n"
-                        "Standard EXIF keys: ImageDescription, Make, Model, Software, "
-                        "Artist, Copyright, DateTimeOriginal, UserComment.\n"
-                        "Any other key is treated as a custom tag."
+                        "A JSON object whose keys and string values will be written as metadata tags.\n"
+                        "Example: {\"ImageDescription\": \"My photo\", \"Artist\": \"John\"}\n"
+                        "Nested objects and arrays are serialized to strings."
                     ),
                 ),
                 io.String.Input(
@@ -76,35 +74,40 @@ class HondaWriteMetadata(io.ComfyNode):
 
     @classmethod
     def execute(cls, file_path: str, metadata: str, output_path: str = "") -> io.NodeOutput:
+        import json
+
         file_path = (file_path or "").strip()
         if not file_path:
             raise ValueError("File Path is empty. Please provide a valid path.")
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        # Parse Key=Value pairs — skip blank lines and comments
+        # Parse the JSON input
+        metadata = (metadata or "{}").strip()
+        try:
+            data = json.loads(metadata)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in Metadata input: {e}")
+
+        if not isinstance(data, dict):
+            raise ValueError("Metadata must be a JSON object (dict), not an array or scalar.")
+
+        # Flatten: nested values are serialized to JSON strings
         pairs: list[tuple[str, str]] = []
-        for raw_line in metadata.splitlines():
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" not in line:
-                raise ValueError(
-                    f"Invalid metadata line (missing '='): {raw_line!r}\n"
-                    "Each line must be in Key=Value format."
-                )
-            key, _, value = line.partition("=")
-            key = key.strip()
-            value = value.strip()
+        for key, value in data.items():
+            key = str(key).strip()
             if not key:
-                raise ValueError(f"Empty key in line: {raw_line!r}")
-            pairs.append((key, value))
+                continue
+            if isinstance(value, (dict, list)):
+                str_value = json.dumps(value, ensure_ascii=False)
+            elif isinstance(value, bool):
+                str_value = "true" if value else "false"
+            else:
+                str_value = str(value)
+            pairs.append((key, str_value))
 
         if not pairs:
-            raise ValueError(
-                "No metadata pairs found. "
-                "Provide at least one Key=Value line in the Metadata input."
-            )
+            raise ValueError("No metadata pairs found. The JSON object must not be empty.")
 
         mex_path = _find_mex()
         if not mex_path:
@@ -122,7 +125,7 @@ class HondaWriteMetadata(io.ComfyNode):
             cmd += ["--output", out]
 
         try:
-            result = subprocess.run(
+            subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,

@@ -27,6 +27,15 @@ from .nodes.json.json_merge import HondaJSONMerge
 from .nodes.json.json_preview import HondaJSONPreview
 from .nodes.json.json_validate import HondaJSONValidate
 
+# File System nodes
+from .nodes.fs.directory import HondaDirectory
+from .nodes.fs.create_directory import HondaCreateDirectory
+from .nodes.fs.delete_directory import HondaDeleteDirectory
+from .nodes.fs.list_files import HondaListFiles
+from .nodes.fs.move_file import HondaMoveFile
+from .nodes.fs.rename_file import HondaRenameFile
+from .nodes.fs.delete_file import HondaDeleteFile
+
 class HondaNodesExtension(ComfyExtension):
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
         return [
@@ -48,6 +57,13 @@ class HondaNodesExtension(ComfyExtension):
             HondaJSONMerge,
             HondaJSONPreview,
             HondaJSONValidate,
+            HondaDirectory,
+            HondaCreateDirectory,
+            HondaDeleteDirectory,
+            HondaListFiles,
+            HondaMoveFile,
+            HondaRenameFile,
+            HondaDeleteFile,
         ]
 
 
