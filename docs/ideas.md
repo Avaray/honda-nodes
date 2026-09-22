@@ -23,6 +23,6 @@ Nodes specifically designed to manipulate and build complex prompts before they 
 * **Prompt Weighting:** A UI node where you input a keyword and a slider, and it automatically formats it into standard ComfyUI syntax (e.g., `(keyword:1.5)`).
 
 ## 5. 🛠️ CLI Wrappers (Execution)
-A generic category for wrapping other standard lightweight CLI tools, following the successful implementation of `mex` and `jq`.
+A generic category for wrapping other standard lightweight CLI tools, following the successful implementation of `ime` and `jq`.
 * **FFmpeg Video/Audio:** Extract a specific frame from a video, or extract audio from an MP4 file.
 * **ImageMagick:** Perform quick, raw image operations (like resizing, format conversion, or watermarking) via CLI before loading them into ComfyUI tensors.

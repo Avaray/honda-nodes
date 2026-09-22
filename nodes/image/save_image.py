@@ -10,17 +10,17 @@ import folder_paths
 from comfy_api.latest import io, ui
 
 
-def _find_mex() -> str | None:
-    mex_path = shutil.which("mex")
-    if mex_path:
-        return mex_path
+def _find_ime() -> str | None:
+    ime_path = shutil.which("ime")
+    if ime_path:
+        return ime_path
 
     current_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     local_bin = os.path.join(current_dir, "bin")
-    mex_exe = "mex.exe" if os.name == "nt" else "mex"
-    local_mex = os.path.join(local_bin, mex_exe)
-    if os.path.exists(local_mex):
-        return local_mex
+    ime_exe = "ime.exe" if os.name == "nt" else "ime"
+    local_ime = os.path.join(local_bin, ime_exe)
+    if os.path.exists(local_ime):
+        return local_ime
 
     return None
 
@@ -32,7 +32,7 @@ class HondaSaveImage(io.ComfyNode):
             node_id="Honda_SaveImage",
             display_name="🖼 Save Image",
             category="⚡️ Honda Nodes/🖼 Image",
-            description="Saves an image to disk, optionally injecting JSON metadata via 'mex', and displays a preview.",
+            description="Saves an image to disk, optionally injecting JSON metadata via 'ime', and displays a preview.",
             is_output_node=True,
             inputs=[
                 io.Image.Input("images", display_name="Images"),
@@ -56,7 +56,7 @@ class HondaSaveImage(io.ComfyNode):
                     optional=True,
                     force_input=True,
                     display_name="Metadata (JSON)",
-                    tooltip="JSON object with metadata to inject via 'mex'.",
+                    tooltip="JSON object with metadata to inject via 'ime'.",
                 ),
             ],
             outputs=[
@@ -105,13 +105,13 @@ class HondaSaveImage(io.ComfyNode):
             img.save(full_path, compress_level=4)
             saved_paths.append(full_path)
 
-            # Apply mex if JSON metadata is provided
+            # Apply ime if JSON metadata is provided
             meta_str = (metadata or "").strip()
             if meta_str and meta_str not in ("{}", ""):
                 try:
                     data = json.loads(meta_str)
                 except json.JSONDecodeError:
-                    print(f"[HondaSaveImage] Invalid JSON in metadata — skipping mex for {file_name}")
+                    print(f"[HondaSaveImage] Invalid JSON in metadata — skipping ime for {file_name}")
                     data = {}
 
                 if isinstance(data, dict) and data:
@@ -129,9 +129,9 @@ class HondaSaveImage(io.ComfyNode):
                         pairs.append((key, str_value))
 
                     if pairs:
-                        mex_path = _find_mex()
-                        if mex_path:
-                            cmd = [mex_path, full_path]
+                        ime_path = _find_ime()
+                        if ime_path:
+                            cmd = [ime_path, full_path]
                             for k, v in pairs:
                                 cmd += ["--set", f"{k}={v}"]
                             try:
@@ -144,9 +144,9 @@ class HondaSaveImage(io.ComfyNode):
                                     errors="replace",
                                 )
                             except subprocess.CalledProcessError as e:
-                                print(f"[HondaSaveImage] mex error on {file_name}: {e.stderr or e.stdout}")
+                                print(f"[HondaSaveImage] ime error on {file_name}: {e.stderr or e.stdout}")
                         else:
-                            print("[HondaSaveImage] Warning: metadata provided but 'mex' not found!")
+                            print("[HondaSaveImage] Warning: metadata provided but 'ime' not found!")
 
         preview = ui.PreviewImage(images)
         paths_str = "\n".join(saved_paths)

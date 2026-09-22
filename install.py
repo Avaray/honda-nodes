@@ -49,28 +49,28 @@ def install_dependencies():
         print(f"[Honda Nodes] jq is already installed at {jq_dest}")
 
     # ---------------------------------------------------------
-    # 2. Download `mex`
+    # 2. Download `ime`
     # ---------------------------------------------------------
     # TODO: Update these URLs to point to your actual GitHub repository releases!
-    mex_version = "v1.0.0" 
-    mex_base_url = "https://github.com/YOUR_GITHUB_USERNAME/mex/releases/download"
+    ime_version = "v1.0.0" 
+    ime_base_url = "https://github.com/YOUR_GITHUB_USERNAME/image-metadata-editor/releases/download"
     
     if system == "windows":
-        mex_url = f"{mex_base_url}/{mex_version}/mex-windows.exe"
-        mex_dest = os.path.join(BIN_DIR, "mex.exe")
+        ime_url = f"{ime_base_url}/{ime_version}/ime-windows.exe"
+        ime_dest = os.path.join(BIN_DIR, "ime.exe")
     elif system == "darwin":
-        mex_url = f"{mex_base_url}/{mex_version}/mex-macos"
-        mex_dest = os.path.join(BIN_DIR, "mex")
+        ime_url = f"{ime_base_url}/{ime_version}/ime-macos"
+        ime_dest = os.path.join(BIN_DIR, "ime")
     else:
-        mex_url = f"{mex_base_url}/{mex_version}/mex-linux"
-        mex_dest = os.path.join(BIN_DIR, "mex")
+        ime_url = f"{ime_base_url}/{ime_version}/ime-linux"
+        ime_dest = os.path.join(BIN_DIR, "ime")
 
-    if not os.path.exists(mex_dest):
+    if not os.path.exists(ime_dest):
         # UNCOMMENT the line below once you put your real repository URLs above
-        # download_binary(mex_url, mex_dest)
-        print("[Honda Nodes] Please configure the 'mex' GitHub URLs in install.py to enable automatic downloads.")
+        # download_binary(ime_url, ime_dest)
+        print("[Honda Nodes] Please configure the 'ime' GitHub URLs in install.py to enable automatic downloads.")
     else:
-        print(f"[Honda Nodes] mex is already installed at {mex_dest}")
+        print(f"[Honda Nodes] ime is already installed at {ime_dest}")
 
 if __name__ == "__main__":
     print("[Honda Nodes] Running post-install setup...")

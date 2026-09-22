@@ -42,26 +42,26 @@ class HondaLoadImage(io.ComfyNode):
         # Determine the absolute path of the loaded image
         image_path = folder_paths.get_annotated_filepath(image)
         
-        # Find the 'mex' executable
-        mex_path = shutil.which("mex")
-        if not mex_path:
+        # Find the 'ime' executable
+        ime_path = shutil.which("ime")
+        if not ime_path:
             current_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             local_bin = os.path.join(current_dir, "bin")
-            mex_exe = "mex.exe" if os.name == "nt" else "mex"
-            local_mex = os.path.join(local_bin, mex_exe)
-            if os.path.exists(local_mex):
-                mex_path = local_mex
+            ime_exe = "ime.exe" if os.name == "nt" else "ime"
+            local_ime = os.path.join(local_bin, ime_exe)
+            if os.path.exists(local_ime):
+                ime_path = local_ime
 
         metadata_text = ""
-        if mex_path and os.path.exists(image_path):
-            # Always output JSON format
-            cmd = [mex_path, image_path, "-j"]
+        if ime_path and os.path.exists(image_path):
+            # ime outputs JSON natively
+            cmd = [ime_path, image_path]
             try:
                 result = subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8', errors='replace')
                 metadata_text = result.stdout.strip()
             except subprocess.CalledProcessError as e:
-                print(f"[Honda Nodes] Warning: Failed to extract metadata with mex: {e.stderr or e.stdout or str(e)}")
-        elif not mex_path:
-            print("[Honda Nodes] Warning: 'mex' CLI not found. Skipping metadata extraction.")
+                print(f"[Honda Nodes] Warning: Failed to extract metadata with ime: {e.stderr or e.stdout or str(e)}")
+        elif not ime_path:
+            print("[Honda Nodes] Warning: 'ime' CLI not found. Skipping metadata extraction.")
         
         return io.NodeOutput(image_tensor, mask_tensor, image_path, metadata_text)

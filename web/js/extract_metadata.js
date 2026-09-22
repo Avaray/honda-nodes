@@ -10,7 +10,7 @@ const SYNC_PATH_WIDGET = true;
 
 const EMPTY_PATH = "Path appears after the node runs.";
 const EMPTY_TEXT = "Metadata appears here after the node runs.";
-const NO_METADATA = "mex returned no metadata for this file.";
+const NO_METADATA = "ime returned no metadata for this file.";
 
 const CSS = `
 .hem {
@@ -72,7 +72,7 @@ function injectStyles() {
 // ui values arrive as arrays (Python tuples); tolerate plain values too.
 const first = (v) => (Array.isArray(v) ? v[0] : v);
 
-// mex -j output: pretty-print it. Plain-text output is shown untouched.
+// ime outputs JSON natively, so we try to pretty-print it. Plain-text output is shown untouched.
 function prettify(text) {
     const t = (text ?? "").trim();
     if (t.startsWith("{") || t.startsWith("[")) {
