@@ -35,6 +35,7 @@ from .nodes.fs.list_files import HondaListFiles
 from .nodes.fs.move_file import HondaMoveFile
 from .nodes.fs.rename_file import HondaRenameFile
 from .nodes.fs.delete_file import HondaDeleteFile
+from .nodes.fs.read_file import HondaReadFile
 
 class HondaNodesExtension(ComfyExtension):
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
@@ -64,6 +65,7 @@ class HondaNodesExtension(ComfyExtension):
             HondaMoveFile,
             HondaRenameFile,
             HondaDeleteFile,
+            HondaReadFile,
         ]
 
 
