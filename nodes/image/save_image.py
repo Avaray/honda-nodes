@@ -43,6 +43,49 @@ class HondaSaveImage(io.ComfyNode):
                     display_name="Filename",
                     tooltip="Base filename. A counter will be appended automatically.",
                 ),
+                io.DynamicCombo.Input(
+                    "image_format",
+                    options=[
+                        io.DynamicCombo.Option("png", [
+                            io.Int.Input(
+                                "compress_level",
+                                default=4,
+                                min=0,
+                                max=9,
+                                display_name="Compression Level",
+                                tooltip="PNG is lossless — this only trades encode speed for file size (0 = fastest/biggest file, 9 = slowest/smallest file). It does not affect image quality.",
+                            ),
+                        ]),
+                        io.DynamicCombo.Option("jpg", [
+                            io.Int.Input(
+                                "quality",
+                                default=95,
+                                min=1,
+                                max=100,
+                                display_name="Quality",
+                                tooltip="JPEG quality (1-100). Higher = better quality, larger file.",
+                            ),
+                        ]),
+                        io.DynamicCombo.Option("webp", [
+                            io.Int.Input(
+                                "quality",
+                                default=95,
+                                min=1,
+                                max=100,
+                                display_name="Quality",
+                                tooltip="WEBP quality (1-100). Only applies when Lossless is off.",
+                            ),
+                            io.Boolean.Input(
+                                "lossless",
+                                default=False,
+                                display_name="Lossless",
+                                tooltip="Save WEBP losslessly instead of using lossy compression at the chosen Quality.",
+                            ),
+                        ]),
+                    ],
+                    display_name="Format",
+                    tooltip="File format to save as. The quality controls below change depending on the selected format.",
+                ),
                 io.String.Input(
                     "save_path",
                     default="",
@@ -69,6 +112,7 @@ class HondaSaveImage(io.ComfyNode):
         cls,
         images: torch.Tensor,
         filename: str = "",
+        image_format: dict = None,
         save_path: str = "",
         metadata: str = ""
     ) -> io.NodeOutput:
@@ -76,6 +120,14 @@ class HondaSaveImage(io.ComfyNode):
         save_dir = (save_path or folder_paths.get_output_directory()).strip()
 
         os.makedirs(save_dir, exist_ok=True)
+
+        # image_format to teraz dict z DynamicCombo:
+        # {"image_format": "png"/"jpg"/"webp", ...pola właściwe dla wybranej opcji}
+        image_format = image_format or {}
+        selected_format = str(image_format.get("image_format", "png")).strip().lower()
+        if selected_format not in ("png", "jpg", "webp"):
+            selected_format = "png"
+        ext = selected_format
 
         existing_files = []
         try:
@@ -85,9 +137,9 @@ class HondaSaveImage(io.ComfyNode):
 
         counter = 1
         for f in existing_files:
-            if f.startswith(filename) and f.endswith(".png"):
+            if f.startswith(filename) and f.endswith(f".{ext}"):
                 try:
-                    part = f[len(filename):].replace("_", "").replace(".png", "")
+                    part = f[len(filename):].replace("_", "").replace(f".{ext}", "")
                     if part.isdigit():
                         counter = max(counter, int(part) + 1)
                 except ValueError:
@@ -99,54 +151,50 @@ class HondaSaveImage(io.ComfyNode):
             i = 255. * image.cpu().numpy()
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
 
-            file_name = f"{filename}_{counter + batch_index:05d}.png"
+            file_name = f"{filename}_{counter + batch_index:05d}.{ext}"
             full_path = os.path.join(save_dir, file_name)
 
-            img.save(full_path, compress_level=4)
-            saved_paths.append(full_path)
-
-            # Apply ime if JSON metadata is provided
+            # Prepare metadata
             meta_str = (metadata or "").strip()
+            meta_dict = None
             if meta_str and meta_str not in ("{}", ""):
                 try:
-                    data = json.loads(meta_str)
+                    meta_dict = json.loads(meta_str)
                 except json.JSONDecodeError:
-                    print(f"[HondaSaveImage] Invalid JSON in metadata — skipping ime for {file_name}")
-                    data = {}
+                    print(f"[HondaSaveImage] Invalid JSON in metadata — skipping metadata for {file_name}")
 
-                if isinstance(data, dict) and data:
-                    pairs = []
-                    for key, value in data.items():
-                        key = str(key).strip()
-                        if not key:
-                            continue
-                        if isinstance(value, (dict, list)):
-                            str_value = json.dumps(value, ensure_ascii=False)
-                        elif isinstance(value, bool):
-                            str_value = "true" if value else "false"
+            if selected_format == "png":
+                compress_level = image_format.get("compress_level", 4)
+                pnginfo = None
+                if isinstance(meta_dict, dict) and meta_dict:
+                    from PIL.PngImagePlugin import PngInfo
+                    pnginfo = PngInfo()
+                    for k, v in meta_dict.items():
+                        if isinstance(v, (dict, list)):
+                            pnginfo.add_text(k, json.dumps(v, ensure_ascii=False))
                         else:
-                            str_value = str(value)
-                        pairs.append((key, str_value))
+                            pnginfo.add_text(k, str(v))
+                img.save(full_path, compress_level=compress_level, pnginfo=pnginfo)
 
-                    if pairs:
-                        ime_path = _find_ime()
-                        if ime_path:
-                            cmd = [ime_path, full_path]
-                            for k, v in pairs:
-                                cmd += ["--set", f"{k}={v}"]
-                            try:
-                                subprocess.run(
-                                    cmd,
-                                    capture_output=True,
-                                    text=True,
-                                    check=True,
-                                    encoding="utf-8",
-                                    errors="replace",
-                                )
-                            except subprocess.CalledProcessError as e:
-                                print(f"[HondaSaveImage] ime error on {file_name}: {e.stderr or e.stdout}")
-                        else:
-                            print("[HondaSaveImage] Warning: metadata provided but 'ime' not found!")
+            else:  # jpg or webp
+                exif = None
+                if isinstance(meta_dict, dict) and meta_dict:
+                    exif = img.getexif()
+                    exif_ifd = exif.get_ifd(34665)  # Exif IFD
+                    # 37510 is UserComment
+                    exif_ifd[37510] = json.dumps(meta_dict, ensure_ascii=False)
+
+                if selected_format == "jpg":
+                    quality = image_format.get("quality", 95)
+                    if img.mode in ("RGBA", "LA", "P"):
+                        img = img.convert("RGB")
+                    img.save(full_path, quality=quality, optimize=True, exif=exif)
+                else:  # webp
+                    quality = image_format.get("quality", 95)
+                    lossless = bool(image_format.get("lossless", False))
+                    img.save(full_path, quality=quality, lossless=lossless, exif=exif)
+
+            saved_paths.append(full_path)
 
         preview = ui.PreviewImage(images)
         paths_str = "\n".join(saved_paths)
