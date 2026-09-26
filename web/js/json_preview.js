@@ -47,6 +47,21 @@ function buildIconBtn(textToCopy, title, icon) {
 function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false, autoCollapseGetter, truncateGetter) {
     const currentPath = makePath(parentPath, key, isArrayChild);
 
+    let isStringifiedJSON = false;
+    let originalString = null;
+    if (typeof obj === "string") {
+        try {
+            const parsed = JSON.parse(obj);
+            if (parsed !== null && typeof parsed === "object") {
+                originalString = obj;
+                obj = parsed;
+                isStringifiedJSON = true;
+            }
+        } catch (e) {
+            // Not stringified JSON
+        }
+    }
+
     if (obj === null) return createNode(key, "null", "gray", currentPath, obj);
     if (typeof obj === "boolean") return createNode(key, obj, "#d33682", currentPath, obj);
     if (typeof obj === "number") return createNode(key, obj, "#cb4b16", currentPath, obj);
@@ -86,8 +101,10 @@ function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false,
         headerSpan.appendChild(copyPathBtn);
         headerSpan.appendChild(copyValBtn);
 
+        const typeLabel = isStringifiedJSON ? `Stringified Array(${obj.length})` : `Array(${obj.length})`;
         const typeSpan = document.createElement("span");
-        typeSpan.innerHTML = key !== null ? `: Array(${obj.length})` : `Array(${obj.length})`;
+        typeSpan.innerHTML = key !== null ? `: ${typeLabel}` : typeLabel;
+        typeSpan.style.color = isStringifiedJSON ? "#b58900" : "inherit"; // Highlight stringified nodes in yellow-ish
 
         summary.appendChild(headerSpan);
         summary.appendChild(typeSpan);
@@ -151,8 +168,10 @@ function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false,
     headerSpan.appendChild(copyPathBtn);
     headerSpan.appendChild(copyValBtn);
 
+    const typeLabel = isStringifiedJSON ? `Stringified Object` : `Object`;
     const typeSpan = document.createElement("span");
-    typeSpan.innerHTML = key !== null ? `: Object` : `Object`;
+    typeSpan.innerHTML = key !== null ? `: ${typeLabel}` : typeLabel;
+    typeSpan.style.color = isStringifiedJSON ? "#b58900" : "inherit";
 
     summary.appendChild(headerSpan);
     summary.appendChild(typeSpan);
