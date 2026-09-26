@@ -37,6 +37,8 @@ const NODE_SIZES = {
     Honda_MoveFile:         [340, 140],  // source + destination
     Honda_ReadFile:         [340, 120],
     Honda_ListFiles:        [340, 200],  // path + recursive bool + limit + filter
+    Honda_PathNormalize:    [340, 120],  // single path input → normalized output
+    Honda_PathJoin:         [340, 240],  // up to 5 segments
 
     // ── Image ─────────────────────────────────────────────────────────────
     Honda_LoadImage:        [340, 160],  // combo picker + 4 outputs
