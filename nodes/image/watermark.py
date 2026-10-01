@@ -13,10 +13,9 @@ import sys
 import numpy as np
 import torch
 from PIL import Image, ImageDraw, ImageFont
-from dataclasses import dataclass, field
-from typing import Any
 
-from comfy_api.latest import io
+import folder_paths
+from comfy_api.latest import io, ui
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +92,6 @@ def apply_watermark(img: Image.Image, wm: dict) -> Image.Image:
 
     if wm_type == "image":
         wm_img: Image.Image = wm["image"].convert("RGBA")
-        # Scale relative to canvas if scale provided
         scale = float(wm.get("scale", 1.0))
         if scale != 1.0:
             new_w = int(wm_img.width * scale)
@@ -161,18 +159,31 @@ def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
 class HondaWatermarkLoad(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
+        input_dir = folder_paths.get_input_directory()
+        files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
+        files = folder_paths.filter_files_content_types(files, ["image"])
+
         return io.Schema(
             node_id="Honda_WatermarkLoad",
             display_name="🖼 Image Watermark",
             category="⚡️ Honda Nodes/🖼 Image",
             description="Creates a watermark from a PNG/image file (supports transparency). Connect to Save Image.",
             inputs=[
+                io.Combo.Input(
+                    "image",
+                    options=sorted(files) if files else [],
+                    upload=io.UploadType.image,
+                    image_folder=io.FolderType.input,
+                    display_name="Image",
+                    tooltip="Select a PNG or image with transparency to use as a watermark.",
+                ),
                 io.String.Input(
-                    "image_path",
+                    "path_override",
                     default="",
+                    optional=True,
                     force_input=True,
-                    display_name="Image Path",
-                    tooltip="Absolute path to a PNG (or any image with transparency) to use as the watermark.",
+                    display_name="Path Override",
+                    tooltip="Absolute path to an image file. If provided, overrides the picker above.",
                 ),
                 io.Float.Input(
                     "opacity",
@@ -213,15 +224,22 @@ class HondaWatermarkLoad(io.ComfyNode):
     @classmethod
     def execute(
         cls,
-        image_path: str,
+        image: str,
+        path_override: str = "",
         opacity: float = 0.7,
         scale: float = 1.0,
         position: str = "bottom_right",
         margin: int = 16,
     ) -> io.NodeOutput:
-        image_path = (image_path or "").strip()
+        path_override = (path_override or "").strip()
+        if path_override and os.path.exists(path_override):
+            image_path = path_override
+        else:
+            image_path = folder_paths.get_annotated_filepath(image)
+
         if not image_path or not os.path.exists(image_path):
             raise FileNotFoundError(f"[Honda WatermarkLoad] Image not found: {image_path!r}")
+
         wm_img = Image.open(image_path)
         wm_dict = {
             "type": "image",
@@ -231,7 +249,11 @@ class HondaWatermarkLoad(io.ComfyNode):
             "position": position,
             "margin": margin,
         }
-        return io.NodeOutput(wm_dict)
+
+        # Show a preview of the watermark image in the node canvas
+        preview_arr = np.array(wm_img.convert("RGB")).astype(np.float32) / 255.0
+        preview_tensor = torch.from_numpy(preview_arr)[None,]
+        return io.NodeOutput(wm_dict, ui=ui.PreviewImage(preview_tensor))
 
 
 # ---------------------------------------------------------------------------
