@@ -35,7 +35,7 @@ class HondaSaveImage(io.ComfyNode):
             node_id="Honda_SaveImage",
             display_name="🖼 Save Image",
             category="⚡️ Honda Nodes/🖼 Image",
-            description="Saves an image to disk, optionally injecting JSON metadata via 'ime', and displays a preview.",
+            description="Saves an image to disk in one or multiple formats, optionally adding a watermark and injecting JSON metadata via 'ime'.",
             is_output_node=True,
             inputs=[
                 io.Image.Input("images", display_name="Images"),
@@ -46,49 +46,13 @@ class HondaSaveImage(io.ComfyNode):
                     display_name="Filename",
                     tooltip="Base filename. A counter will be appended automatically.",
                 ),
-                io.DynamicCombo.Input(
-                    "image_format",
-                    options=[
-                        io.DynamicCombo.Option("png", [
-                            io.Int.Input(
-                                "compress_level",
-                                default=4,
-                                min=0,
-                                max=9,
-                                display_name="Compression Level",
-                                tooltip="PNG is lossless — this only trades encode speed for file size (0 = fastest/biggest file, 9 = slowest/smallest file). It does not affect image quality.",
-                            ),
-                        ]),
-                        io.DynamicCombo.Option("jpg", [
-                            io.Int.Input(
-                                "quality",
-                                default=95,
-                                min=1,
-                                max=100,
-                                display_name="Quality",
-                                tooltip="JPEG quality (1-100). Higher = better quality, larger file.",
-                            ),
-                        ]),
-                        io.DynamicCombo.Option("webp", [
-                            io.Int.Input(
-                                "quality",
-                                default=95,
-                                min=1,
-                                max=100,
-                                display_name="Quality",
-                                tooltip="WEBP quality (1-100). Only applies when Lossless is off.",
-                            ),
-                            io.Boolean.Input(
-                                "lossless",
-                                default=False,
-                                display_name="Lossless",
-                                tooltip="Save WEBP losslessly instead of using lossy compression at the chosen Quality.",
-                            ),
-                        ]),
-                    ],
-                    display_name="Format",
-                    tooltip="File format to save as. The quality controls below change depending on the selected format.",
-                ),
+                io.Boolean.Input("save_png", default=True, display_name="Save PNG"),
+                io.Boolean.Input("save_jpg", default=True, display_name="Save JPG"),
+                io.Boolean.Input("save_webp", default=True, display_name="Save WEBP"),
+                io.Int.Input("png_compress_level", default=4, min=0, max=9, display_name="PNG Compression", tooltip="0=fastest/largest, 9=slowest/smallest. PNG is lossless — only affects file size."),
+                io.Int.Input("jpg_quality", default=95, min=1, max=100, display_name="JPG Quality"),
+                io.Int.Input("webp_quality", default=95, min=1, max=100, display_name="WEBP Quality", tooltip="Only applies when WEBP Lossless is off."),
+                io.Boolean.Input("webp_lossless", default=False, display_name="WEBP Lossless"),
                 io.String.Input(
                     "save_path",
                     default="",
@@ -110,7 +74,35 @@ class HondaSaveImage(io.ComfyNode):
                     optional=True,
                     force_input=True,
                     display_name="Format Override",
-                    tooltip="Provide 'png', 'jpg', or 'webp' to override the widget selection. Useful when dynamically deciding format from Load Image.",
+                    tooltip="Provide 'png', 'jpg', or 'webp' to save ONLY in that format, ignoring the toggles above.",
+                ),
+                io.String.Input(
+                    "watermark_text",
+                    default="",
+                    optional=True,
+                    display_name="Watermark Text",
+                    tooltip="Text to overlay on the image. Leave empty for no watermark.",
+                ),
+                io.Int.Input(
+                    "watermark_size",
+                    default=24,
+                    min=8,
+                    max=256,
+                    display_name="Watermark Size",
+                ),
+                io.Float.Input(
+                    "watermark_opacity",
+                    default=0.5,
+                    min=0.0,
+                    max=1.0,
+                    step=0.1,
+                    display_name="Watermark Opacity",
+                ),
+                io.Combo.Input(
+                    "watermark_position",
+                    options=["bottom_right", "bottom_left", "top_right", "top_left", "center"],
+                    default="bottom_right",
+                    display_name="Watermark Position",
                 ),
             ],
             outputs=[
@@ -123,30 +115,46 @@ class HondaSaveImage(io.ComfyNode):
         cls,
         images: torch.Tensor,
         filename: str = "",
-        image_format: dict = None,
+        save_png: bool = True,
+        save_jpg: bool = True,
+        save_webp: bool = True,
+        png_compress_level: int = 4,
+        jpg_quality: int = 95,
+        webp_quality: int = 95,
+        webp_lossless: bool = False,
         save_path: str = "",
         metadata: str = "",
         format_override: str = "",
+        watermark_text: str = "",
+        watermark_size: int = 24,
+        watermark_opacity: float = 0.5,
+        watermark_position: str = "bottom_right",
     ) -> io.NodeOutput:
+        from PIL import ImageDraw, ImageFont
+
         filename = (filename or "HondaImage").strip()
         save_dir = (save_path or folder_paths.get_output_directory()).strip()
-
         os.makedirs(save_dir, exist_ok=True)
 
-        # image_format to teraz dict z DynamicCombo:
-        # {"image_format": "png"/"jpg"/"webp", ...pola właściwe dla wybranej opcji}
-        image_format = image_format or {}
-        
+        # Format override: force a single format if given
         format_override = (format_override or "").strip().lower()
-        if format_override in ("png", "jpg", "jpeg", "webp"):
-            selected_format = "jpg" if format_override == "jpeg" else format_override
-        else:
-            selected_format = str(image_format.get("image_format", "png")).strip().lower()
-            if selected_format not in ("png", "jpg", "webp"):
-                selected_format = "png"
-                
-        ext = selected_format
+        if format_override == "jpeg":
+            format_override = "jpg"
 
+        if format_override in ("png", "jpg", "webp"):
+            formats_to_save = [format_override]
+        else:
+            formats_to_save = []
+            if save_png:
+                formats_to_save.append("png")
+            if save_jpg:
+                formats_to_save.append("jpg")
+            if save_webp:
+                formats_to_save.append("webp")
+            if not formats_to_save:
+                formats_to_save = ["png"]
+
+        # Determine next counter across all enabled formats
         existing_files = []
         try:
             existing_files = os.listdir(save_dir)
@@ -154,66 +162,94 @@ class HondaSaveImage(io.ComfyNode):
             pass
 
         counter = 1
-        for f in existing_files:
-            if f.startswith(filename) and f.endswith(f".{ext}"):
-                try:
-                    part = f[len(filename):].replace("_", "").replace(f".{ext}", "")
-                    if part.isdigit():
-                        counter = max(counter, int(part) + 1)
-                except ValueError:
-                    pass
+        for fmt in formats_to_save:
+            for f in existing_files:
+                if f.startswith(filename) and f.endswith(f".{fmt}"):
+                    try:
+                        part = f[len(filename):].replace("_", "").replace(f".{fmt}", "")
+                        if part.isdigit():
+                            counter = max(counter, int(part) + 1)
+                    except ValueError:
+                        pass
+
+        meta_str = (metadata or "").strip()
+
+        def _apply_watermark(img: Image.Image) -> Image.Image:
+            text = (watermark_text or "").strip()
+            if not text:
+                return img
+            base = img.convert("RGBA")
+            overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+            draw = ImageDraw.Draw(overlay)
+            try:
+                font = ImageFont.truetype("arial.ttf", watermark_size)
+            except Exception:
+                font = ImageFont.load_default()
+            bbox = draw.textbbox((0, 0), text, font=font)
+            tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+            margin = 16
+            W, H = base.size
+            positions = {
+                "bottom_right": (W - tw - margin, H - th - margin),
+                "bottom_left":  (margin, H - th - margin),
+                "top_right":    (W - tw - margin, margin),
+                "top_left":     (margin, margin),
+                "center":       ((W - tw) // 2, (H - th) // 2),
+            }
+            x, y = positions.get(watermark_position, positions["bottom_right"])
+            alpha = int(255 * max(0.0, min(1.0, watermark_opacity)))
+            # Draw subtle shadow first for readability
+            draw.text((x + 1, y + 1), text, font=font, fill=(0, 0, 0, alpha // 2))
+            draw.text((x, y), text, font=font, fill=(255, 255, 255, alpha))
+            composited = Image.alpha_composite(base, overlay)
+            return composited.convert("RGB") if img.mode != "RGBA" else composited
 
         saved_paths = []
 
         for batch_index, image in enumerate(images):
-            i = 255. * image.cpu().numpy()
+            i = 255.0 * image.cpu().numpy()
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+            img = _apply_watermark(img)
 
-            file_name = f"{filename}_{counter + batch_index:05d}.{ext}"
-            full_path = os.path.join(save_dir, file_name)
+            for fmt in formats_to_save:
+                file_name = f"{filename}_{counter + batch_index:05d}.{fmt}"
+                full_path = os.path.join(save_dir, file_name)
 
-            # Prepare and sanitize metadata for ime
-            meta_str = (metadata or "").strip()
-            clean_meta = sanitize_for_ime(meta_str, ext) if meta_str not in ("", "{}") else ""
+                clean_meta = sanitize_for_ime(meta_str, fmt) if meta_str not in ("", "{}") else ""
 
-            if selected_format == "png":
-                compress_level = image_format.get("compress_level", 4)
-                img.save(full_path, compress_level=compress_level)
-            elif selected_format == "jpg":
-                quality = image_format.get("quality", 95)
-                if img.mode in ("RGBA", "LA", "P"):
-                    img = img.convert("RGB")
-                img.save(full_path, quality=quality, optimize=True)
-            else:  # webp
-                quality = image_format.get("quality", 95)
-                lossless = bool(image_format.get("lossless", False))
-                img.save(full_path, quality=quality, lossless=lossless)
+                if fmt == "png":
+                    img.save(full_path, compress_level=png_compress_level)
+                elif fmt == "jpg":
+                    save_img = img.convert("RGB") if img.mode in ("RGBA", "LA", "P") else img
+                    save_img.save(full_path, quality=jpg_quality, optimize=True)
+                else:  # webp
+                    img.save(full_path, quality=webp_quality, lossless=webp_lossless)
 
-            # Inject metadata via ime using a temp file to avoid Windows cmdline length limit
-            if clean_meta:
-                ime_path = _find_ime()
-                if ime_path:
-                    tmp_path = None
-                    try:
-                        with tempfile.NamedTemporaryFile(
-                            mode="w", suffix=".json", encoding="utf-8", delete=False
-                        ) as tmp:
-                            tmp.write(clean_meta)
-                            tmp_path = tmp.name
-                        cmd = [ime_path, full_path, "--set", f"@{tmp_path}"]
-                        subprocess.run(
-                            cmd, capture_output=True, text=True, check=True,
-                            encoding="utf-8", errors="replace",
-                        )
-                    except subprocess.CalledProcessError as e:
-                        print(f"[HondaSaveImage] Warning: Failed to inject metadata with ime: {e.stderr or e.stdout or str(e)}")
-                    finally:
-                        if tmp_path and os.path.exists(tmp_path):
-                            os.unlink(tmp_path)
-                else:
-                    print("[HondaSaveImage] Warning: 'ime' CLI not found. Skipping metadata injection.")
+                # Inject metadata via ime using a temp file to avoid Windows cmdline length limit
+                if clean_meta:
+                    ime_path = _find_ime()
+                    if ime_path:
+                        tmp_path = None
+                        try:
+                            with tempfile.NamedTemporaryFile(
+                                mode="w", suffix=".json", encoding="utf-8", delete=False
+                            ) as tmp:
+                                tmp.write(clean_meta)
+                                tmp_path = tmp.name
+                            cmd = [ime_path, full_path, "--set", f"@{tmp_path}"]
+                            subprocess.run(
+                                cmd, capture_output=True, text=True, check=True,
+                                encoding="utf-8", errors="replace",
+                            )
+                        except subprocess.CalledProcessError as e:
+                            print(f"[HondaSaveImage] Warning: Failed to inject metadata with ime: {e.stderr or e.stdout or str(e)}")
+                        finally:
+                            if tmp_path and os.path.exists(tmp_path):
+                                os.unlink(tmp_path)
+                    else:
+                        print("[HondaSaveImage] Warning: 'ime' CLI not found. Skipping metadata injection.")
 
-            saved_paths.append(full_path)
+                saved_paths.append(full_path)
 
         preview = ui.PreviewImage(images)
         paths_str = "\n".join(saved_paths)
