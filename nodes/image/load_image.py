@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from PIL import Image, ImageOps
 
-from comfy_api.latest import io
+from comfy_api.latest import io, ui
 from nodes import LoadImage
 
 from ..metadata.format_translation import detect_format_from_file
@@ -97,4 +97,5 @@ class HondaLoadImage(io.ComfyNode):
         elif not ime_path:
             print("[Honda Nodes] Warning: 'ime' CLI not found. Skipping metadata extraction.")
         
-        return io.NodeOutput(image_tensor, mask_tensor, image_path, metadata_text, img_format)
+        preview = ui.PreviewImage(image_tensor)
+        return io.NodeOutput(image_tensor, mask_tensor, image_path, metadata_text, img_format, ui=preview)
