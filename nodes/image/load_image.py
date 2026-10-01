@@ -94,15 +94,15 @@ class HondaLoadImage(io.ComfyNode):
             if max_dim > max_resolution:
                 scale = max_resolution / max_dim
                 new_H, new_W = int(H * scale), int(W * scale)
+                # Downscale only for the UI preview — the output tensor stays full-res
                 img_c = image_tensor.permute(0, 3, 1, 2)
                 img_c = F.interpolate(img_c, size=(new_H, new_W), mode="bicubic", align_corners=False)
-                image_tensor = img_c.permute(0, 2, 3, 1)
-                
-                if mask_tensor is not None:
-                    # mask_tensor shape is (B, H, W)
-                    mask_c = mask_tensor.unsqueeze(1)
-                    mask_c = F.interpolate(mask_c, size=(new_H, new_W), mode="bilinear", align_corners=False)
-                    mask_tensor = mask_c.squeeze(1)
+                preview_tensor = img_c.permute(0, 2, 3, 1)
+            else:
+                preview_tensor = image_tensor
+        else:
+            preview_tensor = image_tensor
+
 
         # Detect the original format
         img_format = detect_format_from_file(image_path)
@@ -129,5 +129,6 @@ class HondaLoadImage(io.ComfyNode):
         elif not ime_path:
             print("[Honda Nodes] Warning: 'ime' CLI not found. Skipping metadata extraction.")
         
-        preview = ui.PreviewImage(image_tensor)
+        # Use downscaled tensor for UI preview only; output stays full-resolution
+        preview = ui.PreviewImage(preview_tensor)
         return io.NodeOutput(image_tensor, mask_tensor, image_path, metadata_text, img_format, ui=preview)

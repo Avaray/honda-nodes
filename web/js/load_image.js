@@ -16,12 +16,18 @@ app.registerExtension({
                 const isConnected = pathOverrideInput.link !== null && pathOverrideInput.link !== undefined;
                 if (isConnected) {
                     imageWidget.disabled = true;
-                    // Change visual label without breaking the internal name
                     imageWidget.label = "[ OVERRIDDEN BY PATH ]";
                 } else {
                     imageWidget.disabled = false;
                     imageWidget.label = "Image";
                 }
+            }
+
+            // Disable max_resolution when lightweight_preview is off
+            const lwWidget = node.widgets?.find(w => w.name === "lightweight_preview");
+            const maxResWidget = node.widgets?.find(w => w.name === "max_resolution");
+            if (lwWidget && maxResWidget) {
+                maxResWidget.disabled = !lwWidget.value;
             }
         };
 
@@ -42,6 +48,25 @@ app.registerExtension({
                 onConfigure.apply(this, arguments);
             }
             updateWidgetState(this);
+        };
+
+        const onNodeCreated = nodeType.prototype.onNodeCreated;
+        nodeType.prototype.onNodeCreated = function() {
+            if (onNodeCreated) {
+                onNodeCreated.apply(this, arguments);
+            }
+            const node = this;
+            // Watch the lightweight_preview toggle
+            const lwWidget = node.widgets?.find(w => w.name === "lightweight_preview");
+            if (lwWidget) {
+                const origCallback = lwWidget.callback;
+                lwWidget.callback = function(value) {
+                    if (origCallback) origCallback.apply(this, arguments);
+                    updateWidgetState(node);
+                    node.setDirtyCanvas(true, true);
+                };
+            }
+            updateWidgetState(node);
         };
     }
 });

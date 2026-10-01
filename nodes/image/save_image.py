@@ -1,7 +1,6 @@
 import os
 import shutil
 import subprocess
-import json
 import tempfile
 import torch
 import numpy as np
@@ -11,6 +10,7 @@ import folder_paths
 from comfy_api.latest import io, ui
 
 from ..metadata.format_translation import sanitize_for_ime
+from .watermark import HondaWatermark, apply_watermark
 
 
 def _find_ime() -> str | None:
@@ -35,7 +35,7 @@ class HondaSaveImage(io.ComfyNode):
             node_id="Honda_SaveImage",
             display_name="🖼 Save Image",
             category="⚡️ Honda Nodes/🖼 Image",
-            description="Saves an image to disk in one or multiple formats, optionally adding a watermark and injecting JSON metadata via 'ime'.",
+            description="Saves an image to disk in one or multiple formats, optionally with a watermark and injected JSON metadata.",
             is_output_node=True,
             inputs=[
                 io.Image.Input("images", display_name="Images"),
@@ -49,7 +49,7 @@ class HondaSaveImage(io.ComfyNode):
                 io.Boolean.Input("save_png", default=True, display_name="Save PNG"),
                 io.Boolean.Input("save_jpg", default=True, display_name="Save JPG"),
                 io.Boolean.Input("save_webp", default=True, display_name="Save WEBP"),
-                io.Int.Input("png_compress_level", default=4, min=0, max=9, display_name="PNG Compression", tooltip="0=fastest/largest, 9=slowest/smallest. PNG is lossless — only affects file size."),
+                io.Int.Input("png_compress_level", default=4, min=0, max=9, display_name="PNG Compression", tooltip="0=fastest/largest, 9=slowest/smallest."),
                 io.Int.Input("jpg_quality", default=95, min=1, max=100, display_name="JPG Quality"),
                 io.Int.Input("webp_quality", default=95, min=1, max=100, display_name="WEBP Quality", tooltip="Only applies when WEBP Lossless is off."),
                 io.Boolean.Input("webp_lossless", default=False, display_name="WEBP Lossless"),
@@ -76,33 +76,11 @@ class HondaSaveImage(io.ComfyNode):
                     display_name="Format Override",
                     tooltip="Provide 'png', 'jpg', or 'webp' to save ONLY in that format, ignoring the toggles above.",
                 ),
-                io.String.Input(
-                    "watermark_text",
-                    default="",
+                HondaWatermark.Input(
+                    "watermark",
                     optional=True,
-                    display_name="Watermark Text",
-                    tooltip="Text to overlay on the image. Leave empty for no watermark.",
-                ),
-                io.Int.Input(
-                    "watermark_size",
-                    default=24,
-                    min=8,
-                    max=256,
-                    display_name="Watermark Size",
-                ),
-                io.Float.Input(
-                    "watermark_opacity",
-                    default=0.5,
-                    min=0.0,
-                    max=1.0,
-                    step=0.1,
-                    display_name="Watermark Opacity",
-                ),
-                io.Combo.Input(
-                    "watermark_position",
-                    options=["bottom_right", "bottom_left", "top_right", "top_left", "center"],
-                    default="bottom_right",
-                    display_name="Watermark Position",
+                    display_name="Watermark",
+                    tooltip="Connect an 'Image Watermark' or 'Text Watermark' node.",
                 ),
             ],
             outputs=[
@@ -125,18 +103,13 @@ class HondaSaveImage(io.ComfyNode):
         save_path: str = "",
         metadata: str = "",
         format_override: str = "",
-        watermark_text: str = "",
-        watermark_size: int = 24,
-        watermark_opacity: float = 0.5,
-        watermark_position: str = "bottom_right",
+        watermark: dict | None = None,
     ) -> io.NodeOutput:
-        from PIL import ImageDraw, ImageFont
-
         filename = (filename or "HondaImage").strip()
         save_dir = (save_path or folder_paths.get_output_directory()).strip()
         os.makedirs(save_dir, exist_ok=True)
 
-        # Format override: force a single format if given
+        # Determine formats to save
         format_override = (format_override or "").strip().lower()
         if format_override == "jpeg":
             format_override = "jpg"
@@ -173,43 +146,14 @@ class HondaSaveImage(io.ComfyNode):
                         pass
 
         meta_str = (metadata or "").strip()
-
-        def _apply_watermark(img: Image.Image) -> Image.Image:
-            text = (watermark_text or "").strip()
-            if not text:
-                return img
-            base = img.convert("RGBA")
-            overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
-            draw = ImageDraw.Draw(overlay)
-            try:
-                font = ImageFont.truetype("arial.ttf", watermark_size)
-            except Exception:
-                font = ImageFont.load_default()
-            bbox = draw.textbbox((0, 0), text, font=font)
-            tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-            margin = 16
-            W, H = base.size
-            positions = {
-                "bottom_right": (W - tw - margin, H - th - margin),
-                "bottom_left":  (margin, H - th - margin),
-                "top_right":    (W - tw - margin, margin),
-                "top_left":     (margin, margin),
-                "center":       ((W - tw) // 2, (H - th) // 2),
-            }
-            x, y = positions.get(watermark_position, positions["bottom_right"])
-            alpha = int(255 * max(0.0, min(1.0, watermark_opacity)))
-            # Draw subtle shadow first for readability
-            draw.text((x + 1, y + 1), text, font=font, fill=(0, 0, 0, alpha // 2))
-            draw.text((x, y), text, font=font, fill=(255, 255, 255, alpha))
-            composited = Image.alpha_composite(base, overlay)
-            return composited.convert("RGB") if img.mode != "RGBA" else composited
-
         saved_paths = []
 
         for batch_index, image in enumerate(images):
             i = 255.0 * image.cpu().numpy()
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-            img = _apply_watermark(img)
+            # Apply watermark (shared helper)
+            if watermark:
+                img = apply_watermark(img, watermark)
 
             for fmt in formats_to_save:
                 file_name = f"{filename}_{counter + batch_index:05d}.{fmt}"
