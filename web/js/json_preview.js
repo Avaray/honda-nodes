@@ -48,12 +48,22 @@ function buildIconBtn(textToCopy, title, icon) {
 // Python allows literal NaN, Infinity, and -Infinity which break JS JSON.parse
 function parseJsonWithPythonFix(str) {
     if (typeof str !== "string") return str;
-    let sanitized = str;
-    let prev;
-    do {
-        prev = sanitized;
-        sanitized = sanitized.replace(/([\[:,]\s*)(NaN|Infinity|-Infinity)(\s*[\]},])/g, '$1"$2"$3');
-    } while (sanitized !== prev);
+    
+    // Fast path: if no NaN/Infinity, just parse directly
+    if (!str.includes("NaN") && !str.includes("Infinity")) {
+        return JSON.parse(str);
+    }
+    
+    // Replace unquoted NaN, Infinity, -Infinity with quoted versions
+    // The regex matches any valid JSON string first, OR the target words.
+    // This ensures we don't accidentally replace NaN inside an already stringified inner JSON.
+    const sanitized = str.replace(/"(?:[^"\\]|\\.)*"|\b(NaN|Infinity)\b|-Infinity/g, function(match) {
+        if (match === 'NaN' || match === 'Infinity' || match === '-Infinity') {
+            return '"' + match + '"';
+        }
+        return match;
+    });
+
     return JSON.parse(sanitized);
 }
 
