@@ -16,13 +16,11 @@ app.registerExtension({
                 const isConnected = pathOverrideInput.link !== null && pathOverrideInput.link !== undefined;
                 if (isConnected) {
                     imageWidget.disabled = true;
-                    imageWidget.originalName = imageWidget.originalName || imageWidget.name;
-                    imageWidget.name = "[ OVERRIDDEN BY PATH ]";
+                    // Change visual label without breaking the internal name
+                    imageWidget.label = "[ OVERRIDDEN BY PATH ]";
                 } else {
                     imageWidget.disabled = false;
-                    if (imageWidget.originalName) {
-                        imageWidget.name = imageWidget.originalName;
-                    }
+                    imageWidget.label = "Image";
                 }
             }
         };
