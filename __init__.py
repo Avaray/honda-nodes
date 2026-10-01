@@ -21,6 +21,7 @@ from .nodes.metadata.write_metadata import HondaWriteMetadata
 from .nodes.metadata.convert_metadata import HondaConvertMetadataFormat
 from .nodes.image.load_image import HondaLoadImage
 from .nodes.image.save_image import HondaSaveImage
+from .nodes.image.preview_image import HondaPreviewImage
 from .nodes.json.json_get_value import HondaJSONGetValue
 from .nodes.json.json_set_key import HondaJSONSetKey
 from .nodes.json.json_delete_key import HondaJSONDeleteKey
@@ -56,6 +57,7 @@ class HondaNodesExtension(ComfyExtension):
             HondaConvertMetadataFormat,
             HondaLoadImage,
             HondaSaveImage,
+            HondaPreviewImage,
             HondaJSONGetValue,
             HondaJSONSetKey,
             HondaJSONDeleteKey,
