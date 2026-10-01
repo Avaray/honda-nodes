@@ -1,7 +1,7 @@
 """
 "Write Metadata" - Schema V3 node definition.
 
-Uses the 'mex' CLI tool to inject metadata (key=value pairs) into an image file.
+Uses the 'ime' CLI tool to inject metadata (key=value pairs) into an image file.
 """
 
 import os
@@ -10,18 +10,18 @@ import subprocess
 from comfy_api.latest import io
 
 
-def _find_mex() -> str | None:
-    """Look for the 'mex' executable in PATH or in the extension's own bin/ folder."""
-    mex_path = shutil.which("mex")
-    if mex_path:
-        return mex_path
+def _find_ime() -> str | None:
+    """Look for the 'ime' executable in PATH or in the extension's own bin/ folder."""
+    ime_path = shutil.which("ime")
+    if ime_path:
+        return ime_path
 
     current_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     local_bin = os.path.join(current_dir, "bin")
-    mex_exe = "mex.exe" if os.name == "nt" else "mex"
-    local_mex = os.path.join(local_bin, mex_exe)
-    if os.path.exists(local_mex):
-        return local_mex
+    ime_exe = "ime.exe" if os.name == "nt" else "ime"
+    local_ime = os.path.join(local_bin, ime_exe)
+    if os.path.exists(local_ime):
+        return local_ime
 
     return None
 
@@ -34,7 +34,7 @@ class HondaWriteMetadata(io.ComfyNode):
             display_name="🏷️ Write Metadata",
             category="⚡️ Honda Nodes/🏷️ Metadata",
             description=(
-                "Injects metadata tags into an image file using the 'mex' CLI tool. "
+                "Injects metadata tags into an image file using the 'ime' CLI tool. "
                 "Accepts a JSON object string where each key-value pair is written as metadata. "
                 "Operates in-place by default; provide an Output Path to leave the original untouched."
             ),
@@ -51,9 +51,9 @@ class HondaWriteMetadata(io.ComfyNode):
                     multiline=True,
                     display_name="Metadata (JSON)",
                     tooltip=(
-                        "A JSON object whose keys and string values will be written as metadata tags.\n"
-                        "Example: {\"ImageDescription\": \"My photo\", \"Artist\": \"John\"}\n"
-                        "Nested objects and arrays are serialized to strings."
+                        "A JSON object to merge into the metadata via 'ime'.\n"
+                        "Example: {\"exif\": {\"Artist\": \"John\"}, \"custom\": {\"UserComment\": {\"rating\": 5}}}\n"
+                        "Use the correct structure for the image format (e.g. PngText for PNGs)."
                     ),
                 ),
                 io.String.Input(
@@ -62,7 +62,7 @@ class HondaWriteMetadata(io.ComfyNode):
                     optional=True,
                     display_name="Output Path (optional)",
                     tooltip=(
-                        "If provided, mex writes the result to this path instead of modifying "
+                        "If provided, ime writes the result to this path instead of modifying "
                         "the source file in-place. Leave empty to edit in-place."
                     ),
                 ),
@@ -92,33 +92,23 @@ class HondaWriteMetadata(io.ComfyNode):
         if not isinstance(data, dict):
             raise ValueError("Metadata must be a JSON object (dict), not an array or scalar.")
 
-        # Flatten: nested values are serialized to JSON strings
-        pairs: list[tuple[str, str]] = []
-        for key, value in data.items():
-            key = str(key).strip()
-            if not key:
-                continue
-            if isinstance(value, (dict, list)):
-                str_value = json.dumps(value, ensure_ascii=False)
-            elif isinstance(value, bool):
-                str_value = "true" if value else "false"
-            else:
-                str_value = str(value)
-            pairs.append((key, str_value))
+        if not data:
+            raise ValueError("The JSON object must not be empty.")
+            
+        from .format_translation import detect_format_from_file, translate_metadata
+        
+        target_format = detect_format_from_file(file_path)
+        if target_format != "unknown":
+            metadata = translate_metadata(metadata, target_format)
 
-        if not pairs:
-            raise ValueError("No metadata pairs found. The JSON object must not be empty.")
-
-        mex_path = _find_mex()
-        if not mex_path:
+        ime_path = _find_ime()
+        if not ime_path:
             raise FileNotFoundError(
-                "The 'mex' CLI tool was not found in the system PATH or the extension's 'bin' folder. "
+                "The 'ime' CLI tool was not found in the system PATH or the extension's 'bin' folder. "
                 "Download it and place the executable in your PATH or in the honda-nodes/bin/ folder."
             )
 
-        cmd = [mex_path, file_path]
-        for key, value in pairs:
-            cmd += ["--set", f"{key}={value}"]
+        cmd = [ime_path, file_path, "--set", metadata]
 
         out = (output_path or "").strip()
         if out:
@@ -135,7 +125,7 @@ class HondaWriteMetadata(io.ComfyNode):
             )
         except subprocess.CalledProcessError as e:
             raise RuntimeError(
-                f"mex failed (exit code {e.returncode}): {e.stderr or e.stdout or str(e)}"
+                f"ime failed (exit code {e.returncode}): {e.stderr or e.stdout or str(e)}"
             )
 
         result_path = out if out else file_path

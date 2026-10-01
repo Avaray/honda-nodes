@@ -18,6 +18,7 @@ from .nodes.text.text import HondaText
 from .nodes.text.text_match import HondaTextMatch
 from .nodes.metadata.extract_metadata import HondaExtractMetadata
 from .nodes.metadata.write_metadata import HondaWriteMetadata
+from .nodes.metadata.convert_metadata import HondaConvertMetadataFormat
 from .nodes.image.load_image import HondaLoadImage
 from .nodes.image.save_image import HondaSaveImage
 from .nodes.json.json_get_value import HondaJSONGetValue
@@ -52,6 +53,7 @@ class HondaNodesExtension(ComfyExtension):
             HondaTextPreview,
             HondaExtractMetadata,
             HondaWriteMetadata,
+            HondaConvertMetadataFormat,
             HondaLoadImage,
             HondaSaveImage,
             HondaJSONGetValue,

@@ -9,6 +9,8 @@ from PIL import Image
 import folder_paths
 from comfy_api.latest import io, ui
 
+from ..metadata.format_translation import translate_metadata
+
 
 def _find_ime() -> str | None:
     ime_path = shutil.which("ime")
@@ -101,6 +103,14 @@ class HondaSaveImage(io.ComfyNode):
                     display_name="Metadata (JSON)",
                     tooltip="JSON object with metadata to inject via 'ime'.",
                 ),
+                io.String.Input(
+                    "format_override",
+                    default="",
+                    optional=True,
+                    force_input=True,
+                    display_name="Format Override",
+                    tooltip="Provide 'png', 'jpg', or 'webp' to override the widget selection. Useful when dynamically deciding format from Load Image.",
+                ),
             ],
             outputs=[
                 io.String.Output(display_name="Saved Paths"),
@@ -114,7 +124,8 @@ class HondaSaveImage(io.ComfyNode):
         filename: str = "",
         image_format: dict = None,
         save_path: str = "",
-        metadata: str = ""
+        metadata: str = "",
+        format_override: str = "",
     ) -> io.NodeOutput:
         filename = (filename or "HondaImage").strip()
         save_dir = (save_path or folder_paths.get_output_directory()).strip()
@@ -124,9 +135,15 @@ class HondaSaveImage(io.ComfyNode):
         # image_format to teraz dict z DynamicCombo:
         # {"image_format": "png"/"jpg"/"webp", ...pola właściwe dla wybranej opcji}
         image_format = image_format or {}
-        selected_format = str(image_format.get("image_format", "png")).strip().lower()
-        if selected_format not in ("png", "jpg", "webp"):
-            selected_format = "png"
+        
+        format_override = (format_override or "").strip().lower()
+        if format_override in ("png", "jpg", "jpeg", "webp"):
+            selected_format = "jpg" if format_override == "jpeg" else format_override
+        else:
+            selected_format = str(image_format.get("image_format", "png")).strip().lower()
+            if selected_format not in ("png", "jpg", "webp"):
+                selected_format = "png"
+                
         ext = selected_format
 
         existing_files = []
@@ -156,43 +173,35 @@ class HondaSaveImage(io.ComfyNode):
 
             # Prepare metadata
             meta_str = (metadata or "").strip()
-            meta_dict = None
             if meta_str and meta_str not in ("{}", ""):
-                try:
-                    meta_dict = json.loads(meta_str)
-                except json.JSONDecodeError:
-                    print(f"[HondaSaveImage] Invalid JSON in metadata — skipping metadata for {file_name}")
+                meta_str = translate_metadata(meta_str, ext)
 
             if selected_format == "png":
                 compress_level = image_format.get("compress_level", 4)
-                pnginfo = None
-                if isinstance(meta_dict, dict) and meta_dict:
-                    from PIL.PngImagePlugin import PngInfo
-                    pnginfo = PngInfo()
-                    for k, v in meta_dict.items():
-                        if isinstance(v, (dict, list)):
-                            pnginfo.add_text(k, json.dumps(v, ensure_ascii=False))
-                        else:
-                            pnginfo.add_text(k, str(v))
-                img.save(full_path, compress_level=compress_level, pnginfo=pnginfo)
+                img.save(full_path, compress_level=compress_level)
+            elif selected_format == "jpg":
+                quality = image_format.get("quality", 95)
+                if img.mode in ("RGBA", "LA", "P"):
+                    img = img.convert("RGB")
+                img.save(full_path, quality=quality, optimize=True)
+            else:  # webp
+                quality = image_format.get("quality", 95)
+                lossless = bool(image_format.get("lossless", False))
+                img.save(full_path, quality=quality, lossless=lossless)
 
-            else:  # jpg or webp
-                exif = None
-                if isinstance(meta_dict, dict) and meta_dict:
-                    exif = img.getexif()
-                    exif_ifd = exif.get_ifd(34665)  # Exif IFD
-                    # 37510 is UserComment
-                    exif_ifd[37510] = json.dumps(meta_dict, ensure_ascii=False)
-
-                if selected_format == "jpg":
-                    quality = image_format.get("quality", 95)
-                    if img.mode in ("RGBA", "LA", "P"):
-                        img = img.convert("RGB")
-                    img.save(full_path, quality=quality, optimize=True, exif=exif)
-                else:  # webp
-                    quality = image_format.get("quality", 95)
-                    lossless = bool(image_format.get("lossless", False))
-                    img.save(full_path, quality=quality, lossless=lossless, exif=exif)
+            # Inject metadata via ime
+            if meta_str and meta_str not in ("{}", ""):
+                ime_path = _find_ime()
+                if ime_path:
+                    cmd = [ime_path, full_path, "--set", meta_str]
+                    try:
+                        subprocess.run(
+                            cmd, capture_output=True, text=True, check=True, encoding="utf-8", errors="replace"
+                        )
+                    except subprocess.CalledProcessError as e:
+                        print(f"[HondaSaveImage] Warning: Failed to inject metadata with ime: {e.stderr or e.stdout or str(e)}")
+                else:
+                    print("[HondaSaveImage] Warning: 'ime' CLI not found. Skipping metadata injection.")
 
             saved_paths.append(full_path)
 
