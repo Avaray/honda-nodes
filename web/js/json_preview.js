@@ -47,18 +47,31 @@ function buildIconBtn(textToCopy, title, icon) {
 function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false, autoCollapseGetter, truncateGetter) {
     const currentPath = makePath(parentPath, key, isArrayChild);
 
+    // Deep-unwrap: repeatedly try JSON.parse as long as we get back a string
+    // that itself parses into an object/array. This handles:
+    //   - normal stringified JSON:          '{"a":1}'       → object  (1 round)
+    //   - double-quoted Exif UserComment:   '"{\\"a\\":1}"' → string → object (2 rounds)
     let isStringifiedJSON = false;
     let originalString = null;
     if (typeof obj === "string") {
-        try {
-            const parsed = JSON.parse(obj);
+        let current = obj;
+        for (let rounds = 0; rounds < 5; rounds++) {
+            let parsed;
+            try { parsed = JSON.parse(current); } catch (e) { break; }
             if (parsed !== null && typeof parsed === "object") {
-                originalString = obj;
+                // Successfully unwrapped to an object/array — stop here
+                if (originalString === null) originalString = obj;
                 obj = parsed;
                 isStringifiedJSON = true;
+                break;
             }
-        } catch (e) {
-            // Not stringified JSON
+            if (typeof parsed === "string" && parsed !== current) {
+                // Got a string from JSON.parse (double-quoted case) — try once more
+                current = parsed;
+                continue;
+            }
+            // Got a primitive (number, bool, null) — don't treat as stringified
+            break;
         }
     }
 
