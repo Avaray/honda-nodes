@@ -44,6 +44,19 @@ function buildIconBtn(textToCopy, title, icon) {
     return btn;
 }
 
+// Helper to safely parse JSON that might have been output by Python's json.dumps()
+// Python allows literal NaN, Infinity, and -Infinity which break JS JSON.parse
+function parseJsonWithPythonFix(str) {
+    if (typeof str !== "string") return str;
+    let sanitized = str;
+    let prev;
+    do {
+        prev = sanitized;
+        sanitized = sanitized.replace(/([\[:,]\s*)(NaN|Infinity|-Infinity)(\s*[\]},])/g, '$1"$2"$3');
+    } while (sanitized !== prev);
+    return JSON.parse(sanitized);
+}
+
 function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false, autoCollapseGetter, truncateGetter) {
     const currentPath = makePath(parentPath, key, isArrayChild);
 
@@ -57,7 +70,7 @@ function buildJsonTree(obj, key = null, parentPath = null, isArrayChild = false,
         let current = obj;
         for (let rounds = 0; rounds < 5; rounds++) {
             let parsed;
-            try { parsed = JSON.parse(current); } catch (e) { break; }
+            try { parsed = parseJsonWithPythonFix(current); } catch (e) { break; }
             if (parsed !== null && typeof parsed === "object") {
                 // Successfully unwrapped to an object/array — stop here
                 if (originalString === null) originalString = obj;
@@ -375,7 +388,7 @@ app.registerExtension({
         const renderJson = (node, val) => {
             node._hondaJsonRawValue = val;
             try {
-                const parsed = JSON.parse(val);
+                const parsed = parseJsonWithPythonFix(val);
                 node._hondaJsonPreviewContainer.innerHTML = "";
                 node._hondaJsonPreviewContainer.appendChild(
                     buildJsonTree(parsed, null, null, false, node._hondaJsonAutoCollapseGetter, node._hondaJsonTruncateGetter)
@@ -417,7 +430,7 @@ app.registerExtension({
                 const val = Array.isArray(message.json_tree) ? message.json_tree[0] : message.json_tree;
                 
                 try {
-                    const parsed = JSON.parse(val);
+                    const parsed = parseJsonWithPythonFix(val);
                     node._hondaJsonPreviewContainer.innerHTML = "";
                     node._hondaJsonPreviewContainer.appendChild(
                         buildJsonTree(parsed, null, null, false, node._hondaJsonAutoCollapseGetter, node._hondaJsonTruncateGetter)
