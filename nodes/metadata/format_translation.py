@@ -70,6 +70,72 @@ def translate_metadata(meta_str: str, target_format: str) -> str:
         
     return meta_str
 
+
+_IME_TOP_LEVEL_KEYS = frozenset({"exif", "custom"})
+
+
+def sanitize_for_ime(meta_str: str, target_format: str) -> str:
+    """
+    Ensures the metadata JSON only contains keys that ime accepts ('exif', 'custom').
+    Any unknown top-level keys are wrapped into custom.UserComment (jpg/webp) or
+    custom.PngText (png) so they are preserved without causing ime to reject the payload.
+    Also runs translate_metadata to fix PngText<->UserComment mismatches.
+    Returns a clean JSON string, or empty string if nothing valid remains.
+    """
+    meta_str = (meta_str or "").strip()
+    if not meta_str or meta_str in ("{}", ""):
+        return ""
+
+    try:
+        meta_dict = json.loads(meta_str)
+    except json.JSONDecodeError:
+        return ""
+
+    if not isinstance(meta_dict, dict) or not meta_dict:
+        return ""
+
+    unknown_keys = {k: v for k, v in meta_dict.items() if k not in _IME_TOP_LEVEL_KEYS}
+    clean = {k: v for k, v in meta_dict.items() if k in _IME_TOP_LEVEL_KEYS}
+
+    if unknown_keys:
+        fmt = (target_format or "").strip().lower()
+        custom = clean.get("custom", {})
+        if not isinstance(custom, dict):
+            custom = {}
+        else:
+            custom = dict(custom)
+
+        if fmt == "png":
+            png_text = custom.get("PngText", {})
+            if not isinstance(png_text, dict):
+                png_text = {}
+            else:
+                png_text = dict(png_text)
+            for k, v in unknown_keys.items():
+                if isinstance(v, (dict, list)):
+                    png_text[k] = json.dumps(v, ensure_ascii=False)
+                else:
+                    png_text[k] = str(v)
+            custom["PngText"] = png_text
+        else:
+            user_comment = custom.get("UserComment", {})
+            if not isinstance(user_comment, dict):
+                user_comment = {}
+            else:
+                user_comment = dict(user_comment)
+            user_comment.update(unknown_keys)
+            custom["UserComment"] = user_comment
+
+        clean["custom"] = custom
+
+    if not clean:
+        return ""
+
+    result = json.dumps(clean, ensure_ascii=False)
+    # Also run structural translation (PngText <-> UserComment)
+    return translate_metadata(result, target_format)
+
+
 def detect_format_from_file(path: str) -> str:
     """Safely detects image format from file magic bytes."""
     try:

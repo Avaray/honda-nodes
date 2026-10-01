@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 import json
+import tempfile
 import torch
 import numpy as np
 from PIL import Image
@@ -9,7 +10,7 @@ from PIL import Image
 import folder_paths
 from comfy_api.latest import io, ui
 
-from ..metadata.format_translation import translate_metadata
+from ..metadata.format_translation import sanitize_for_ime
 
 
 def _find_ime() -> str | None:
@@ -171,10 +172,9 @@ class HondaSaveImage(io.ComfyNode):
             file_name = f"{filename}_{counter + batch_index:05d}.{ext}"
             full_path = os.path.join(save_dir, file_name)
 
-            # Prepare metadata
+            # Prepare and sanitize metadata for ime
             meta_str = (metadata or "").strip()
-            if meta_str and meta_str not in ("{}", ""):
-                meta_str = translate_metadata(meta_str, ext)
+            clean_meta = sanitize_for_ime(meta_str, ext) if meta_str not in ("", "{}") else ""
 
             if selected_format == "png":
                 compress_level = image_format.get("compress_level", 4)
@@ -189,17 +189,27 @@ class HondaSaveImage(io.ComfyNode):
                 lossless = bool(image_format.get("lossless", False))
                 img.save(full_path, quality=quality, lossless=lossless)
 
-            # Inject metadata via ime
-            if meta_str and meta_str not in ("{}", ""):
+            # Inject metadata via ime using a temp file to avoid Windows cmdline length limit
+            if clean_meta:
                 ime_path = _find_ime()
                 if ime_path:
-                    cmd = [ime_path, full_path, "--set", meta_str]
+                    tmp_path = None
                     try:
+                        with tempfile.NamedTemporaryFile(
+                            mode="w", suffix=".json", encoding="utf-8", delete=False
+                        ) as tmp:
+                            tmp.write(clean_meta)
+                            tmp_path = tmp.name
+                        cmd = [ime_path, full_path, "--set", f"@{tmp_path}"]
                         subprocess.run(
-                            cmd, capture_output=True, text=True, check=True, encoding="utf-8", errors="replace"
+                            cmd, capture_output=True, text=True, check=True,
+                            encoding="utf-8", errors="replace",
                         )
                     except subprocess.CalledProcessError as e:
                         print(f"[HondaSaveImage] Warning: Failed to inject metadata with ime: {e.stderr or e.stdout or str(e)}")
+                    finally:
+                        if tmp_path and os.path.exists(tmp_path):
+                            os.unlink(tmp_path)
                 else:
                     print("[HondaSaveImage] Warning: 'ime' CLI not found. Skipping metadata injection.")
 

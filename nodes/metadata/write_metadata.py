@@ -75,6 +75,7 @@ class HondaWriteMetadata(io.ComfyNode):
     @classmethod
     def execute(cls, file_path: str, metadata: str, output_path: str = "") -> io.NodeOutput:
         import json
+        import tempfile
 
         file_path = (file_path or "").strip()
         if not file_path:
@@ -82,7 +83,7 @@ class HondaWriteMetadata(io.ComfyNode):
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        # Parse the JSON input
+        # Parse the JSON input early to validate it
         metadata = (metadata or "{}").strip()
         try:
             data = json.loads(metadata)
@@ -94,12 +95,14 @@ class HondaWriteMetadata(io.ComfyNode):
 
         if not data:
             raise ValueError("The JSON object must not be empty.")
-            
-        from .format_translation import detect_format_from_file, translate_metadata
-        
+
+        from .format_translation import detect_format_from_file, sanitize_for_ime
+
         target_format = detect_format_from_file(file_path)
-        if target_format != "unknown":
-            metadata = translate_metadata(metadata, target_format)
+        clean_meta = sanitize_for_ime(metadata, target_format if target_format != "unknown" else "jpg")
+
+        if not clean_meta:
+            raise ValueError("Metadata contains no valid 'exif' or 'custom' keys after sanitization.")
 
         ime_path = _find_ime()
         if not ime_path:
@@ -108,13 +111,20 @@ class HondaWriteMetadata(io.ComfyNode):
                 "Download it and place the executable in your PATH or in the honda-nodes/bin/ folder."
             )
 
-        cmd = [ime_path, file_path, "--set", metadata]
-
         out = (output_path or "").strip()
-        if out:
-            cmd += ["--output", out]
 
+        tmp_path = None
         try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", encoding="utf-8", delete=False
+            ) as tmp:
+                tmp.write(clean_meta)
+                tmp_path = tmp.name
+
+            cmd = [ime_path, file_path, "--set", f"@{tmp_path}"]
+            if out:
+                cmd += ["--output", out]
+
             subprocess.run(
                 cmd,
                 capture_output=True,
@@ -127,6 +137,10 @@ class HondaWriteMetadata(io.ComfyNode):
             raise RuntimeError(
                 f"ime failed (exit code {e.returncode}): {e.stderr or e.stdout or str(e)}"
             )
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.unlink(tmp_path)
 
         result_path = out if out else file_path
         return io.NodeOutput(result_path)
+
