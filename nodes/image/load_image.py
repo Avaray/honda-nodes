@@ -39,6 +39,21 @@ class HondaLoadImage(io.ComfyNode):
                     display_name="Path Override",
                     tooltip="Absolute path to an image file. If provided, this overrides the selected image in the dropdown.",
                 ),
+                io.Boolean.Input(
+                    "lightweight_preview",
+                    default=True,
+                    display_name="Lightweight Preview",
+                    tooltip="Automatically downscales the image if it is too large, saving VRAM and preventing UI lag.",
+                ),
+                io.Int.Input(
+                    "max_resolution",
+                    default=1024,
+                    min=256,
+                    max=8192,
+                    step=64,
+                    display_name="Max Resolution",
+                    tooltip="Maximum dimension (width or height) when Lightweight Preview is enabled.",
+                ),
             ],
             outputs=[
                 io.Image.Output(display_name="Image"),
@@ -50,7 +65,7 @@ class HondaLoadImage(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, image: str, path_override: str = "") -> io.NodeOutput:
+    def execute(cls, image: str, path_override: str = "", lightweight_preview: bool = True, max_resolution: int = 1024) -> io.NodeOutput:
         path_override = (path_override or "").strip()
         
         if path_override and os.path.exists(path_override):
@@ -72,6 +87,23 @@ class HondaLoadImage(io.ComfyNode):
             # Determine the absolute path of the loaded image
             image_path = folder_paths.get_annotated_filepath(image)
             
+        if lightweight_preview:
+            import torch.nn.functional as F
+            B, H, W, C = image_tensor.shape
+            max_dim = max(H, W)
+            if max_dim > max_resolution:
+                scale = max_resolution / max_dim
+                new_H, new_W = int(H * scale), int(W * scale)
+                img_c = image_tensor.permute(0, 3, 1, 2)
+                img_c = F.interpolate(img_c, size=(new_H, new_W), mode="bicubic", align_corners=False)
+                image_tensor = img_c.permute(0, 2, 3, 1)
+                
+                if mask_tensor is not None:
+                    # mask_tensor shape is (B, H, W)
+                    mask_c = mask_tensor.unsqueeze(1)
+                    mask_c = F.interpolate(mask_c, size=(new_H, new_W), mode="bilinear", align_corners=False)
+                    mask_tensor = mask_c.squeeze(1)
+
         # Detect the original format
         img_format = detect_format_from_file(image_path)
         
