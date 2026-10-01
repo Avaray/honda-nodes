@@ -2,22 +2,12 @@ import { app } from "../../../scripts/app.js";
 
 const PREVIEW_NODES = ["Honda_TextPreview", "Honda_JSONGetValue"];
 
-let nativeAdd = null;
-let nativeUpdate = null;
+
 
 app.registerExtension({
     name: "HondaNodes.TextPreview",
 
-    async setup() {
-        // Try to fetch native functions once at startup
-        try {
-            const mod = await import("../../../extensions/core/textPreviewWidgets.js");
-            nativeAdd = mod.addTextPreviewWidgets;
-            nativeUpdate = mod.updateTextPreviewWidgets;
-        } catch (e) {
-            console.log("[Honda Nodes] Native textPreviewWidgets not found, using fallback.");
-        }
-    },
+
 
     async beforeRegisterNodeDef(nodeType, nodeData) {
         if (!PREVIEW_NODES.includes(nodeData.name)) return;
