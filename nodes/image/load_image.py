@@ -14,24 +14,17 @@ from ..metadata.format_translation import detect_format_from_file
 class HondaLoadImage(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
-        input_dir = folder_paths.get_input_directory()
-        files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
-        files = folder_paths.filter_files_content_types(files, ["image"])
-        options = [""] + sorted(files) if files else [""]
-        
         return io.Schema(
             node_id="Honda_LoadImage",
             display_name="🖼 Load Image",
             category="⚡️ Honda Nodes/🖼 Image",
             description="Loads an image from the input folder and outputs the image data, mask, file path, metadata as JSON, and its format.",
             inputs=[
-                io.Combo.Input(
-                    "image",
-                    options=options,
+                io.String.Input(
+                    "image_file",
                     default="",
-                    upload=io.UploadType.image,
-                    image_folder=io.FolderType.input,
-                    display_name="Image",
+                    display_name="File Name",
+                    tooltip="Name of the image file in the input directory, or absolute path.",
                 ),
                 io.String.Input(
                     "path_override",
@@ -60,7 +53,7 @@ class HondaLoadImage(io.ComfyNode):
     @classmethod
     def execute(
         cls, 
-        image: str, 
+        image_file: str, 
         path_override: str = "", 
         preview_image: bool = True
     ) -> io.NodeOutput:
@@ -80,12 +73,12 @@ class HondaLoadImage(io.ComfyNode):
                 mask = np.zeros((64,64), dtype=np.float32)
             mask_tensor = torch.from_numpy(mask)[None,]
         else:
-            if not image:
+            if not image_file:
                 return io.NodeOutput(block_execution="Please select an image in the Load Image node or provide a path_override.")
             # Use standard ComfyUI LoadImage node functionality
-            image_tensor, mask_tensor = LoadImage().load_image(image)
+            image_tensor, mask_tensor = LoadImage().load_image(image_file)
             # Determine the absolute path of the loaded image
-            image_path = folder_paths.get_annotated_filepath(image)
+            image_path = folder_paths.get_annotated_filepath(image_file)
             
         # Detect the original format
         img_format = detect_format_from_file(image_path)
