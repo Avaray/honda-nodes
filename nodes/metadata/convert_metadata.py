@@ -6,7 +6,7 @@ class HondaConvertMetadataFormat(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="Honda_ConvertMetadataFormat",
-            display_name="🔀 Convert Metadata Format",
+            display_name="🏷️ Convert Metadata Format",
             category="⚡️ Honda Nodes/🏷️ Metadata",
             description="Translates the internal structure of metadata JSON to match a target file format (e.g. converting PngText to UserComment and vice versa).",
             inputs=[
