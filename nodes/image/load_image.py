@@ -112,4 +112,5 @@ class HondaLoadImage(io.ComfyNode):
             preview = ui.PreviewImage(image_tensor)
             return io.NodeOutput(image_tensor, mask_tensor, image_path, metadata_text, img_format, ui=preview)
         
-        return io.NodeOutput(image_tensor, mask_tensor, image_path, metadata_text, img_format)
+        # Return empty images to clear the UI on the frontend
+        return io.NodeOutput(image_tensor, mask_tensor, image_path, metadata_text, img_format, ui={"images": []})

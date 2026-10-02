@@ -207,4 +207,5 @@ class HondaSaveImage(io.ComfyNode):
             preview = ui.PreviewImage(images)
             return io.NodeOutput(paths_str, ui=preview)
         
-        return io.NodeOutput(paths_str)
+        # Return empty images to clear the UI on the frontend
+        return io.NodeOutput(paths_str, ui={"images": []})

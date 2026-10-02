@@ -92,23 +92,24 @@ app.registerExtension({
                     popup.style.display = "none";
 
                     const openAndClickTab = () => {
-                        const allTabs = Array.from(document.querySelectorAll(
-                            '.p-menuitem-link, .p-tabview-nav-link, button, [role="tab"], .settings-nav-item, li'
+                        const allEls = Array.from(document.querySelectorAll(
+                            '.p-menuitem-text, .p-tabview-title, span, a, button, li'
                         ));
-                        const hondaTab = allTabs.find(el => el.textContent && el.textContent.toLowerCase().includes('honda'));
-                        
-                        if (hondaTab) {
-                            hondaTab.click();
-                        } else {
-                            // Fallback to search if tab not found, using prototype setter to trigger Vue V-Model correctly
-                            const searchInput = document.querySelector(
-                                ".p-dialog .p-inputtext, [data-testid='settings-search'], .comfy-settings input[type='text'], .comfy-settings input[type='search']"
-                            );
-                            if (searchInput) {
-                                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-                                nativeInputValueSetter.call(searchInput, "Honda Nodes");
-                                searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-                            }
+                        // Find the "Other" tab on the left side
+                        const otherTab = allEls.find(el => el.textContent && el.textContent.trim() === 'Other');
+                        if (otherTab) {
+                            const btn = otherTab.closest('a, button, li, [role="menuitem"], [role="tab"]');
+                            if (btn) btn.click();
+                            else otherTab.click();
+
+                            // Give it a moment to render the right pane, then scroll to HondaNodes
+                            setTimeout(() => {
+                                const allText = Array.from(document.querySelectorAll('span, div, h2, h3'));
+                                const hondaHeader = allText.find(el => el.textContent && el.textContent.trim() === 'HondaNodes');
+                                if (hondaHeader) {
+                                    hondaHeader.scrollIntoView({ behavior: "smooth", block: "start" });
+                                }
+                            }, 150);
                         }
                     };
 
@@ -120,10 +121,7 @@ app.registerExtension({
 
                     if (settingsBtn) {
                         settingsBtn.click();
-                        // Give the dialog a bit more time to render side menu
-                        setTimeout(openAndClickTab, 400);
-                    } else {
-                        console.warn("[Honda Nodes] Could not find native settings button.");
+                        setTimeout(openAndClickTab, 300);
                     }
                 };
 
@@ -181,5 +179,28 @@ app.registerExtension({
 
         // Small delay to ensure Vue + rgthree have both mounted
         setTimeout(injectButton, 1200);
+    },
+
+    async beforeRegisterNodeDef(nodeType, nodeData) {
+        // Clear images on the frontend instantly when the toggle is turned off
+        if (["Honda_LoadImage", "Honda_SaveImage"].includes(nodeData.name)) {
+            const onNodeCreated = nodeType.prototype.onNodeCreated;
+            nodeType.prototype.onNodeCreated = function () {
+                if (onNodeCreated) onNodeCreated.apply(this, arguments);
+                
+                const previewWidget = this.widgets?.find(w => w.name === "preview_image");
+                if (previewWidget) {
+                    const node = this;
+                    const origCallback = previewWidget.callback;
+                    previewWidget.callback = function(val) {
+                        if (origCallback) origCallback.apply(this, arguments);
+                        if (!val) {
+                            node.imgs = null;
+                            app.graph.setDirtyCanvas(true, true);
+                        }
+                    };
+                }
+            };
+        }
     }
 });
