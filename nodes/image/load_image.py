@@ -38,7 +38,6 @@ class HondaLoadImage(io.ComfyNode):
             ],
             outputs=[
                 io.Image.Output(display_name="Image"),
-                io.Mask.Output(display_name="Mask"),
                 io.String.Output(display_name="Path"),
                 io.String.Output(display_name="Metadata"),
                 io.String.Output(display_name="Format"),
@@ -60,16 +59,10 @@ class HondaLoadImage(io.ComfyNode):
             img = i.convert("RGB")
             img = np.array(img).astype(np.float32) / 255.0
             image_tensor = torch.from_numpy(img)[None,]
-            if 'A' in i.getbands():
-                mask = np.array(i.getchannel('A')).astype(np.float32) / 255.0
-                mask = 1. - mask
-            else:
-                mask = np.zeros((64,64), dtype=np.float32)
-            mask_tensor = torch.from_numpy(mask)[None,]
         else:
             if not image_file:
                 return io.NodeOutput(block_execution="Please select an image in the Load Image node or provide a path_override.")
-            image_tensor, mask_tensor = LoadImage().load_image(image_file)
+            image_tensor, _ = LoadImage().load_image(image_file)
             image_path = folder_paths.get_annotated_filepath(image_file)
             
         img_format = detect_format_from_file(image_path)
@@ -94,4 +87,4 @@ class HondaLoadImage(io.ComfyNode):
         elif not ime_path:
             print("[Honda Nodes] Warning: 'ime' CLI not found. Skipping metadata extraction.")
         
-        return io.NodeOutput(image_tensor, mask_tensor, image_path, metadata_text, img_format)
+        return io.NodeOutput(image_tensor, image_path, metadata_text, img_format)
