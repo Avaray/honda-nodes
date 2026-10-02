@@ -24,7 +24,7 @@ class HondaLoadImage(io.ComfyNode):
                     "image_file",
                     default="",
                     display_name="File Name",
-                    tooltip="Name of the image file in the input directory, or absolute path.",
+                    tooltip="Name of the image file in the input directory.",
                 ),
                 io.String.Input(
                     "path_override",
@@ -32,13 +32,7 @@ class HondaLoadImage(io.ComfyNode):
                     optional=True,
                     force_input=True,
                     display_name="Path Override",
-                    tooltip="Absolute path to an image file. If provided, this overrides the selected image in the dropdown.",
-                ),
-                io.Boolean.Input(
-                    "preview_image",
-                    default=True,
-                    display_name="Preview Image",
-                    tooltip="If enabled, shows the loaded image directly on the node canvas.",
+                    tooltip="Absolute path to an image file. If provided, this overrides the selected image.",
                 ),
             ],
             outputs=[
@@ -55,7 +49,6 @@ class HondaLoadImage(io.ComfyNode):
         cls, 
         image_file: str, 
         path_override: str = "", 
-        preview_image: bool = True
     ) -> io.NodeOutput:
         path_override = (path_override or "").strip()
         
@@ -75,15 +68,11 @@ class HondaLoadImage(io.ComfyNode):
         else:
             if not image_file:
                 return io.NodeOutput(block_execution="Please select an image in the Load Image node or provide a path_override.")
-            # Use standard ComfyUI LoadImage node functionality
             image_tensor, mask_tensor = LoadImage().load_image(image_file)
-            # Determine the absolute path of the loaded image
             image_path = folder_paths.get_annotated_filepath(image_file)
             
-        # Detect the original format
         img_format = detect_format_from_file(image_path)
         
-        # Find the 'ime' executable
         ime_path = shutil.which("ime")
         if not ime_path:
             current_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -95,7 +84,6 @@ class HondaLoadImage(io.ComfyNode):
 
         metadata_text = ""
         if ime_path and os.path.exists(image_path):
-            # ime outputs JSON natively
             cmd = [ime_path, image_path]
             try:
                 result = subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8', errors='replace')
@@ -105,9 +93,4 @@ class HondaLoadImage(io.ComfyNode):
         elif not ime_path:
             print("[Honda Nodes] Warning: 'ime' CLI not found. Skipping metadata extraction.")
         
-        if preview_image:
-            preview = ui.PreviewImage(image_tensor)
-            return io.NodeOutput(image_tensor, mask_tensor, image_path, metadata_text, img_format, ui=preview)
-        
-        # Return empty images to clear the UI on the frontend
-        return io.NodeOutput(image_tensor, mask_tensor, image_path, metadata_text, img_format, ui={"images": []})
+        return io.NodeOutput(image_tensor, mask_tensor, image_path, metadata_text, img_format)

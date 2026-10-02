@@ -82,12 +82,6 @@ class HondaSaveImage(io.ComfyNode):
                     display_name="Watermark",
                     tooltip="Connect an 'Image Watermark' or 'Text Watermark' node.",
                 ),
-                io.Boolean.Input(
-                    "preview_image",
-                    default=True,
-                    display_name="Preview Image",
-                    tooltip="If enabled, shows the saved image directly on the node canvas.",
-                ),
             ],
             outputs=[
                 io.String.Output(display_name="Saved Paths"),
@@ -110,7 +104,6 @@ class HondaSaveImage(io.ComfyNode):
         metadata: str = "",
         format_override: str = "",
         watermark: dict | None = None,
-        preview_image: bool = True,
     ) -> io.NodeOutput:
         filename = (filename or "HondaImage").strip()
         save_dir = (save_path or folder_paths.get_output_directory()).strip()
@@ -203,9 +196,5 @@ class HondaSaveImage(io.ComfyNode):
                 saved_paths.append(full_path)
 
         paths_str = "\n".join(saved_paths)
-        if preview_image:
-            preview = ui.PreviewImage(images)
-            return io.NodeOutput(paths_str, ui=preview)
-        
-        # Return empty images to clear the UI on the frontend
-        return io.NodeOutput(paths_str, ui={"images": []})
+        preview = ui.PreviewImage(images)
+        return io.NodeOutput(paths_str, ui=preview)

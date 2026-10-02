@@ -1,16 +1,17 @@
 import { app } from "../../../scripts/app.js";
 import { api } from "../../../scripts/api.js";
 
-const PREVIEW_STYLE = `
-.honda-load-image-widget {
+const HONDA_STYLE = `
+.honda-upload-widget {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     padding: 6px 8px;
     box-sizing: border-box;
     width: 100%;
 }
 
+/* State: no image loaded */
 .honda-dropzone {
     border: 2px dashed #666;
     border-radius: 6px;
@@ -21,14 +22,49 @@ const PREVIEW_STYLE = `
     cursor: pointer;
     color: #aaa;
     font-size: 13px;
-    transition: border-color 0.2s, color 0.2s;
+    transition: border-color 0.15s, color 0.15s;
     user-select: none;
+    box-sizing: border-box;
 }
 
 .honda-dropzone:hover,
 .honda-dropzone.drag-over {
-    border-color: #999;
-    color: #ccc;
+    border-color: #bbb;
+    color: #eee;
+}
+
+/* State: image loaded — the preview IS the drop target */
+.honda-preview-wrap {
+    position: relative;
+    cursor: pointer;
+    border-radius: 4px;
+    overflow: hidden;
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.honda-preview-wrap.visible {
+    display: flex;
+}
+
+.honda-preview-wrap img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 4px;
+}
+
+.honda-preview-wrap .honda-overlay {
+    position: absolute;
+    inset: 0;
+    background: transparent;
+    transition: background 0.15s;
+}
+
+.honda-preview-wrap:hover .honda-overlay,
+.honda-preview-wrap.drag-over .honda-overlay {
+    background: rgba(0,0,0,0.25);
 }
 
 .honda-filename {
@@ -37,25 +73,8 @@ const PREVIEW_STYLE = `
     line-height: 1.4;
     word-break: break-all;
     white-space: normal;
-    padding: 2px 0;
-    min-height: 0;
+    padding: 0;
     pointer-events: none;
-    display: none;
-}
-
-.honda-filename.visible {
-    display: block;
-}
-
-.honda-preview-img {
-    width: 100%;
-    height: auto;
-    display: none;
-    border-radius: 4px;
-}
-
-.honda-preview-img.visible {
-    display: block;
 }
 `;
 
@@ -64,16 +83,13 @@ app.registerExtension({
 
     async beforeRegisterNodeDef(nodeType, nodeData) {
 
-        // ====================================================================
-        // Honda_LoadImage: Custom DOM-based Drag & Drop Image Uploader
-        // ====================================================================
         if (nodeData.name === "Honda_LoadImage") {
 
             // Inject CSS once
             if (!document.getElementById("honda-nodes-style")) {
                 const style = document.createElement("style");
                 style.id = "honda-nodes-style";
-                style.textContent = PREVIEW_STYLE;
+                style.textContent = HONDA_STYLE;
                 document.head.appendChild(style);
             }
 
@@ -83,97 +99,74 @@ app.registerExtension({
 
                 const node = this;
 
-                // 1. Find and hide the raw image_file string widget
+                // Hide the raw image_file string widget from the node
                 const fileWidget = node.widgets?.find(w => w.name === "image_file");
                 if (fileWidget) {
                     fileWidget.type = "hidden";
                     if (fileWidget.element) fileWidget.element.style.display = "none";
+                    // Zero out its size contribution
+                    const orig = fileWidget.computeSize;
+                    fileWidget.computeSize = () => [0, -4];
                 }
 
-                // 2. Build the DOM widget container
+                // ── Build DOM ────────────────────────────────────────────────
                 const container = document.createElement("div");
-                container.className = "honda-load-image-widget";
+                container.className = "honda-upload-widget";
 
-                // Drag & Drop Zone
+                // Empty state: dashed zone
                 const dropzone = document.createElement("div");
                 dropzone.className = "honda-dropzone";
                 dropzone.textContent = "📂 Click or Drop Image Here";
 
-                // File name display (always visible, no editing)
+                // Loaded state: preview + overlay + filename
+                const previewWrap = document.createElement("div");
+                previewWrap.className = "honda-preview-wrap";
+
+                const previewImg = document.createElement("img");
+                previewImg.alt = "";
+
+                const overlay = document.createElement("div");
+                overlay.className = "honda-overlay";
+
                 const filenameEl = document.createElement("div");
                 filenameEl.className = "honda-filename";
 
-                // Preview image
-                const previewImg = document.createElement("img");
-                previewImg.className = "honda-preview-img";
+                previewWrap.appendChild(previewImg);
+                previewWrap.appendChild(overlay);
+                previewWrap.appendChild(filenameEl);
 
                 container.appendChild(dropzone);
-                container.appendChild(filenameEl);
-                container.appendChild(previewImg);
+                container.appendChild(previewWrap);
 
-                // 3. Wire up click-to-upload
-                dropzone.addEventListener("click", () => {
-                    const fileInput = document.createElement("input");
-                    fileInput.type = "file";
-                    fileInput.accept = "image/*";
-                    fileInput.onchange = (e) => {
-                        const file = e.target.files[0];
-                        if (file) doUpload(file);
-                    };
-                    fileInput.click();
-                });
-
-                // 4. Wire up drag and drop
-                dropzone.addEventListener("dragover", (e) => {
-                    e.preventDefault();
-                    dropzone.classList.add("drag-over");
-                });
-                dropzone.addEventListener("dragleave", () => {
-                    dropzone.classList.remove("drag-over");
-                });
-                dropzone.addEventListener("drop", (e) => {
-                    e.preventDefault();
-                    dropzone.classList.remove("drag-over");
-                    const file = e.dataTransfer?.files[0];
-                    if (file && file.type.startsWith("image/")) {
-                        doUpload(file);
-                    }
-                });
-
-                // 5. Also hook LiteGraph's canvas-level drop (files dragged onto canvas)
-                node.onDropFile = function(file) {
-                    if (file && file.type.startsWith("image/")) {
-                        doUpload(file);
-                        return true;
-                    }
-                    return false;
-                };
-
-                // 6. Load/refresh the preview
-                const setPreview = (filename) => {
-                    const previewOn = node.widgets?.find(w => w.name === "preview_image")?.value !== false;
-
-                    // Always show filename
+                // ── Shared helpers ───────────────────────────────────────────
+                const showState = (filename) => {
                     if (filename) {
+                        dropzone.style.display = "none";
+                        previewWrap.classList.add("visible");
                         filenameEl.textContent = filename;
-                        filenameEl.classList.add("visible");
+                        previewImg.src = api.apiURL(
+                            `/view?filename=${encodeURIComponent(filename)}&type=input&t=${Date.now()}`
+                        );
                     } else {
-                        filenameEl.classList.remove("visible");
-                    }
-
-                    // Conditionally show image
-                    if (filename && previewOn) {
-                        previewImg.src = api.apiURL(`/view?filename=${encodeURIComponent(filename)}&type=input&t=${Date.now()}`);
-                        previewImg.classList.add("visible");
-                    } else {
-                        previewImg.classList.remove("visible");
+                        dropzone.style.display = "";
+                        previewWrap.classList.remove("visible");
                         previewImg.src = "";
+                        filenameEl.textContent = "";
                     }
-
                     app.graph.setDirtyCanvas(true, true);
                 };
 
-                // 7. Upload helper
+                const openFilePicker = () => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = (e) => {
+                        const f = e.target.files[0];
+                        if (f) doUpload(f);
+                    };
+                    input.click();
+                };
+
                 const doUpload = async (file) => {
                     const body = new FormData();
                     body.append("image", file);
@@ -183,78 +176,74 @@ app.registerExtension({
                         const data = await resp.json();
                         if (data.name) {
                             if (fileWidget) fileWidget.value = data.name;
-                            setPreview(data.name);
+                            showState(data.name);
                         }
                     } catch (e) {
                         console.error("[Honda Nodes] Upload failed", e);
                     }
                 };
 
-                // 8. Hook preview_image toggle
-                const previewWidget = node.widgets?.find(w => w.name === "preview_image");
-                if (previewWidget) {
-                    const origCallback = previewWidget.callback;
-                    previewWidget.callback = function(val) {
-                        if (origCallback) origCallback.apply(this, arguments);
-                        const currentFile = fileWidget?.value;
-                        setPreview(currentFile);
-                    };
-                }
+                // ── Events on dropzone (empty state) ─────────────────────────
+                dropzone.addEventListener("click", openFilePicker);
 
-                // 9. Add the container as a DOM widget
-                const domWidget = node.addDOMWidget("honda_image_upload", "div", container, {
+                dropzone.addEventListener("dragover", (e) => {
+                    e.preventDefault();
+                    dropzone.classList.add("drag-over");
+                });
+                dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag-over"));
+                dropzone.addEventListener("drop", (e) => {
+                    e.preventDefault();
+                    dropzone.classList.remove("drag-over");
+                    const f = e.dataTransfer?.files[0];
+                    if (f?.type.startsWith("image/")) doUpload(f);
+                });
+
+                // ── Events on preview (loaded state) ─────────────────────────
+                previewWrap.addEventListener("click", openFilePicker);
+
+                previewWrap.addEventListener("dragover", (e) => {
+                    e.preventDefault();
+                    previewWrap.classList.add("drag-over");
+                });
+                previewWrap.addEventListener("dragleave", () => previewWrap.classList.remove("drag-over"));
+                previewWrap.addEventListener("drop", (e) => {
+                    e.preventDefault();
+                    previewWrap.classList.remove("drag-over");
+                    const f = e.dataTransfer?.files[0];
+                    if (f?.type.startsWith("image/")) doUpload(f);
+                });
+
+                // ── LiteGraph canvas-level drop ───────────────────────────────
+                node.onDropFile = function(file) {
+                    if (file?.type.startsWith("image/")) {
+                        doUpload(file);
+                        return true;
+                    }
+                    return false;
+                };
+
+                // ── Add as DOM widget ────────────────────────────────────────
+                node.addDOMWidget("honda_image_upload", "div", container, {
                     getValue: () => fileWidget?.value ?? "",
                     setValue: (v) => {
                         if (fileWidget) fileWidget.value = v;
-                        setPreview(v);
+                        showState(v);
                     },
-                    getMinHeight: () => 80,
+                    getMinHeight: () => 76,
                     hideOnZoom: false,
                 });
 
-                node._hondaSetPreview = setPreview;
+                // Store showState so onConfigure can call it
+                node._hondaShowState = showState;
             };
 
-            // 10. When workflow is loaded from JSON, restore the preview
+            // Restore preview when workflow loads
             const onConfigure = nodeType.prototype.onConfigure;
             nodeType.prototype.onConfigure = function(info) {
                 if (onConfigure) onConfigure.apply(this, arguments);
                 const fileWidget = this.widgets?.find(w => w.name === "image_file");
-                if (fileWidget?.value && this._hondaSetPreview) {
-                    // Defer to next frame to allow widget render
-                    requestAnimationFrame(() => this._hondaSetPreview(fileWidget.value));
-                }
-            };
-        }
-
-        // ====================================================================
-        // Honda_SaveImage: Block preview when toggle is OFF
-        // ====================================================================
-        if (nodeData.name === "Honda_SaveImage") {
-            const onNodeCreated = nodeType.prototype.onNodeCreated;
-            nodeType.prototype.onNodeCreated = function () {
-                if (onNodeCreated) onNodeCreated.apply(this, arguments);
-                const node = this;
-
-                let _realImgs = node.imgs;
-                Object.defineProperty(node, "imgs", {
-                    get() {
-                        const pw = this.widgets?.find(w => w.name === "preview_image");
-                        if (pw && !pw.value) return null;
-                        return _realImgs;
-                    },
-                    set(val) { _realImgs = val; },
-                    configurable: true
-                });
-
-                const previewWidget = node.widgets?.find(w => w.name === "preview_image");
-                if (previewWidget) {
-                    const origCallback = previewWidget.callback;
-                    previewWidget.callback = function(val) {
-                        if (origCallback) origCallback.apply(this, arguments);
-                        if (!val) node.imgs = null;
-                        app.graph.setDirtyCanvas(true, true);
-                    };
+                if (fileWidget?.value && this._hondaShowState) {
+                    requestAnimationFrame(() => this._hondaShowState(fileWidget.value));
                 }
             };
         }
