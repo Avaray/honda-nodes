@@ -39,20 +39,20 @@ class HondaLoadImage(io.ComfyNode):
                     display_name="Path Override",
                     tooltip="Absolute path to an image file. If provided, this overrides the selected image in the dropdown.",
                 ),
-                io.Boolean.Input(
-                    "lightweight_preview",
-                    default=True,
-                    display_name="Lightweight Preview",
-                    tooltip="Automatically downscales the image if it is too large, saving VRAM and preventing UI lag.",
-                ),
                 io.Int.Input(
                     "max_resolution",
                     default=1024,
                     min=256,
                     max=8192,
-                    step=64,
+                    step=256,
                     display_name="Max Resolution",
-                    tooltip="Maximum dimension (width or height) when Lightweight Preview is enabled.",
+                    tooltip="Maximum dimension for preview. Hidden in UI.",
+                ),
+                io.Boolean.Input(
+                    "raw_image",
+                    default=False,
+                    display_name="RAW Image",
+                    tooltip="If enabled, shows the preview in true original quality and dimensions, skipping any UI downscaling.",
                 ),
             ],
             outputs=[
@@ -65,7 +65,13 @@ class HondaLoadImage(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, image: str, path_override: str = "", lightweight_preview: bool = True, max_resolution: int = 1024) -> io.NodeOutput:
+    def execute(
+        cls, 
+        image: str, 
+        path_override: str = "", 
+        max_resolution: int = 1024, 
+        raw_image: bool = False
+    ) -> io.NodeOutput:
         path_override = (path_override or "").strip()
         
         if path_override and os.path.exists(path_override):
@@ -87,7 +93,7 @@ class HondaLoadImage(io.ComfyNode):
             # Determine the absolute path of the loaded image
             image_path = folder_paths.get_annotated_filepath(image)
             
-        if lightweight_preview:
+        if not raw_image:
             import torch.nn.functional as F
             B, H, W, C = image_tensor.shape
             max_dim = max(H, W)

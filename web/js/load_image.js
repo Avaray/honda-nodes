@@ -23,12 +23,6 @@ app.registerExtension({
                 }
             }
 
-            // Disable max_resolution when lightweight_preview is off
-            const lwWidget = node.widgets?.find(w => w.name === "lightweight_preview");
-            const maxResWidget = node.widgets?.find(w => w.name === "max_resolution");
-            if (lwWidget && maxResWidget) {
-                maxResWidget.disabled = !lwWidget.value;
-            }
         };
 
         const onConnectionsChange = nodeType.prototype.onConnectionsChange;
@@ -55,18 +49,7 @@ app.registerExtension({
             if (onNodeCreated) {
                 onNodeCreated.apply(this, arguments);
             }
-            const node = this;
-            // Watch the lightweight_preview toggle
-            const lwWidget = node.widgets?.find(w => w.name === "lightweight_preview");
-            if (lwWidget) {
-                const origCallback = lwWidget.callback;
-                lwWidget.callback = function(value) {
-                    if (origCallback) origCallback.apply(this, arguments);
-                    updateWidgetState(node);
-                    node.setDirtyCanvas(true, true);
-                };
-            }
-            updateWidgetState(node);
+            updateWidgetState(this);
         };
     }
 });

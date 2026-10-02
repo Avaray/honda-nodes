@@ -10,14 +10,6 @@ app.registerExtension({
     init() {
         // Register native ComfyUI Settings
         app.ui.settings.addSetting({
-            id: SETTING_LIGHTWEIGHT,
-            name: "🖼️ Honda Nodes: Default Lightweight Preview",
-            type: "boolean",
-            defaultValue: true,
-            tooltip: "If enabled, newly created 'Load Image' nodes will have Lightweight Preview turned on by default.",
-        });
-
-        app.ui.settings.addSetting({
             id: SETTING_MAX_RES,
             name: "🖼️ Honda Nodes: Default Max Resolution",
             type: "slider",
@@ -89,7 +81,17 @@ app.registerExtension({
                 btnSettings.classList.add("honda-menu-item");
                 btnSettings.innerHTML = "⚙️ Settings (Honda Nodes)";
                 btnSettings.onclick = () => {
-                    app.ui.settings.show();
+                    const settingsBtn = document.querySelector('button[title="Settings"]') || 
+                                      document.querySelector('.comfy-settings-btn') || 
+                                      document.getElementById('settings-button') ||
+                                      (document.querySelector('.pi-cog') ? document.querySelector('.pi-cog').closest('button') : null);
+                    if (settingsBtn) {
+                        settingsBtn.click();
+                    } else if (app.ui && app.ui.settings && app.ui.settings.show) {
+                        app.ui.settings.show();
+                    } else {
+                        console.warn("[Honda Nodes] Could not find settings button");
+                    }
                     popup.style.display = "none";
                 };
 
@@ -148,28 +150,36 @@ app.registerExtension({
         setTimeout(injectButton, 1000);
     },
     async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (nodeData.name === "Honda_LoadImage") {
+        const targetNodes = ["Honda_LoadImage", "Honda_SaveImage", "Honda_PreviewImage"];
+        if (targetNodes.includes(nodeData.name)) {
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
-                if (onNodeCreated) {
-                    onNodeCreated.apply(this, arguments);
-                }
+                if (onNodeCreated) onNodeCreated.apply(this, arguments);
+                
                 const node = this;
                 
-                // Only apply defaults to newly created nodes (not when loading a workflow)
-                // app.configuring_graph is true when a workflow is being loaded
-                if (!app.configuring_graph) {
-                    const lwWidget = node.widgets?.find(w => w.name === "lightweight_preview");
-                    const maxResWidget = node.widgets?.find(w => w.name === "max_resolution");
-                    
-                    try {
-                        const defaultLw = app.ui.settings.getSettingValue(SETTING_LIGHTWEIGHT, true);
-                        const defaultRes = app.ui.settings.getSettingValue(SETTING_MAX_RES, 1024);
-                        
-                        if (lwWidget) lwWidget.value = defaultLw;
-                        if (maxResWidget) maxResWidget.value = defaultRes;
-                    } catch (e) {
-                        console.warn("[Honda Nodes] Failed to apply default settings", e);
+                // Hide max_resolution widget visually
+                const maxResWidget = node.widgets?.find(w => w.name === "max_resolution");
+                if (maxResWidget) {
+                    maxResWidget.type = "converted-widget"; // standard LiteGraph trick to hide
+                    maxResWidget.computeSize = () => [0, -4];
+                }
+            };
+
+            // Intercept serialize to inject the latest global setting right before execution
+            const onSerialize = nodeType.prototype.onSerialize;
+            nodeType.prototype.onSerialize = function (o) {
+                if (onSerialize) onSerialize.apply(this, arguments);
+                
+                // Update max_resolution to the latest global setting
+                if (o && o.widgets_values) {
+                    const node = this;
+                    const widgetIndex = node.widgets?.findIndex(w => w.name === "max_resolution");
+                    if (widgetIndex !== -1 && widgetIndex !== undefined) {
+                        try {
+                            const defaultRes = app.ui.settings.getSettingValue(SETTING_MAX_RES, 1024);
+                            o.widgets_values[widgetIndex] = defaultRes;
+                        } catch (e) {}
                     }
                 }
             };
