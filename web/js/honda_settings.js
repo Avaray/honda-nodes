@@ -107,20 +107,25 @@ app.registerExtension({
                 btnSettings.onclick = () => {
                     popup.style.display = "none";
 
-                    // Open settings and then navigate to the Honda section by typing
-                    // in the search box. This works with ComfyUI Vue V3.
-                    const openAndSearch = () => {
-                        const searchInput = document.querySelector(
-                            ".p-dialog .p-inputtext, " +
-                            "[data-testid='settings-search'], " +
-                            ".comfy-settings input[type='text'], " +
-                            ".comfy-settings input[type='search']"
-                        );
-                        if (searchInput) {
-                            // Clear existing, type "Honda" to filter settings
-                            searchInput.value = "Honda Nodes";
-                            searchInput.dispatchEvent(new Event("input", { bubbles: true }));
-                            searchInput.focus();
+                    // Open settings and then navigate to the Honda section by clicking its tab.
+                    const openAndClickTab = () => {
+                        const allTabs = Array.from(document.querySelectorAll(
+                            '.p-menuitem-link, .p-tabview-nav-link, button, [role="tab"], .settings-nav-item, li'
+                        ));
+                        // Look for a tab whose text content includes 'Honda'
+                        const hondaTab = allTabs.find(el => el.textContent && el.textContent.toLowerCase().includes('honda'));
+                        if (hondaTab) {
+                            hondaTab.click();
+                        } else {
+                            // Fallback to search if tab not found
+                            const searchInput = document.querySelector(
+                                ".p-dialog .p-inputtext, [data-testid='settings-search'], .comfy-settings input[type='text'], .comfy-settings input[type='search']"
+                            );
+                            if (searchInput) {
+                                searchInput.value = "Honda Nodes";
+                                searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+                                searchInput.focus();
+                            }
                         }
                     };
 
@@ -133,8 +138,8 @@ app.registerExtension({
 
                     if (settingsBtn) {
                         settingsBtn.click();
-                        // Give the dialog 300ms to render, then search
-                        setTimeout(openAndSearch, 300);
+                        // Give the dialog a bit more time to render side menu
+                        setTimeout(openAndClickTab, 400);
                     } else {
                         console.warn("[Honda Nodes] Could not find native settings button.");
                     }
@@ -213,19 +218,24 @@ app.registerExtension({
         };
 
         // -----------------------------------------------------------------
-        // Inject global max_res into serialized data before execution
+        // Force the widget value to the setting value right before execution
+        // (onBeforeRun triggers when Queue Prompt is clicked)
         // -----------------------------------------------------------------
-        const onSerialize = nodeType.prototype.onSerialize;
-        nodeType.prototype.onSerialize = function (o) {
-            if (onSerialize) onSerialize.apply(this, arguments);
-            if (!o?.widgets_values) return;
-            const widgetIndex = this.widgets?.findIndex(w => w.name === "max_resolution");
-            if (widgetIndex >= 0) {
-                try {
-                    o.widgets_values[widgetIndex] = app.ui.settings.getSettingValue(SETTING_MAX_RES, 1024);
-                } catch (_) {}
-            }
-        };
+        if (!app.hondaNodesGraphHooked) {
+            app.hondaNodesGraphHooked = true;
+            const origOnBeforeRun = app.graph.onBeforeRun;
+            app.graph.onBeforeRun = function () {
+                if (origOnBeforeRun) origOnBeforeRun.apply(this, arguments);
+                const maxRes = app.ui.settings.getSettingValue(SETTING_MAX_RES, 1024);
+                
+                for (const node of app.graph.computeExecutionOrder(false)) {
+                    if (HONDA_IMAGE_NODES.includes(node.type)) {
+                        const widget = node.widgets?.find(w => w.name === "max_resolution");
+                        if (widget) widget.value = maxRes;
+                    }
+                }
+            };
+        }
 
         // -----------------------------------------------------------------
         // onExecuted: display resolution info below the preview image

@@ -1,37 +1,21 @@
 """
-honda_preview.py — Shared preview helper.
+honda_preview.py - Shared preview helper.
 
-Wraps ui.PreviewImage to also embed original/preview dimensions in the
-`as_dict()` output so the frontend can display resolution info under
-the canvas thumbnail.
+Downscales the image for UI preview and returns a UI dictionary
+containing the temp image paths plus the `honda_dims` metadata.
 """
 import torch
 import torch.nn.functional as F
 from comfy_api.latest import ui
 
-
-class HondaPreviewImage(ui.PreviewImage):
-    """PreviewImage extended with orig/preview size metadata."""
-
-    def __init__(self, preview_tensor: torch.Tensor, orig_h: int, orig_w: int):
-        super().__init__(preview_tensor)
-        _B, prev_H, prev_W, _C = preview_tensor.shape
-        self.honda_dims = f"{prev_W}x{prev_H}|{orig_w}x{orig_h}"
-
-    def as_dict(self) -> dict:
-        d = super().as_dict()
-        d["honda_dims"] = self.honda_dims
-        return d
-
-
 def make_preview(
     image_tensor: torch.Tensor,
     raw_image: bool,
     max_resolution: int,
-) -> "HondaPreviewImage":
+) -> dict:
     """
     Downscale image_tensor for UI preview (unless raw_image=True), then
-    return a HondaPreviewImage that carries both preview and original dims.
+    return a UI dictionary that carries both preview and original dims.
     """
     _B, orig_H, orig_W, _C = image_tensor.shape
 
@@ -48,4 +32,11 @@ def make_preview(
     else:
         preview_tensor = image_tensor
 
-    return HondaPreviewImage(preview_tensor, orig_h=orig_H, orig_w=orig_W)
+    # Generate the standard PreviewImage (saves to temp folder)
+    preview = ui.PreviewImage(preview_tensor)
+    ui_dict = preview.as_dict()
+    
+    _B, prev_H, prev_W, _C = preview_tensor.shape
+    ui_dict["honda_dims"] = f"{prev_W}x{prev_H}|{orig_W}x{orig_H}"
+    
+    return ui_dict
