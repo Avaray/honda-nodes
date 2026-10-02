@@ -234,6 +234,17 @@ app.registerExtension({
 
                 // Store showState so onConfigure can call it
                 node._hondaShowState = showState;
+
+                // Catch execution result (e.g. from path_override) to update preview
+                api.addEventListener("executed", (e) => {
+                    const detail = e.detail;
+                    if (detail && detail.node == node.id) {
+                        const output = detail.output;
+                        if (output?.honda_preview?.[0]?.filename && node._hondaShowState) {
+                            node._hondaShowState(output.honda_preview[0].filename);
+                        }
+                    }
+                });
             };
 
             // Restore preview when workflow loads
@@ -243,15 +254,6 @@ app.registerExtension({
                 const fileWidget = this.widgets?.find(w => w.name === "image_file");
                 if (fileWidget?.value && this._hondaShowState) {
                     requestAnimationFrame(() => this._hondaShowState(fileWidget.value));
-                }
-            };
-
-            // Catch execution result (e.g. from path_override) to update preview
-            const onExecuted = nodeType.prototype.onExecuted;
-            nodeType.prototype.onExecuted = function(message) {
-                if (onExecuted) onExecuted.apply(this, arguments);
-                if (message?.honda_preview?.[0]?.filename && this._hondaShowState) {
-                    this._hondaShowState(message.honda_preview[0].filename);
                 }
             };
         }
