@@ -8,6 +8,7 @@ from PIL import Image
 
 import folder_paths
 from comfy_api.latest import io, ui
+from .honda_preview import make_preview
 
 from ..metadata.format_translation import sanitize_for_ime
 from .watermark import HondaWatermark, apply_watermark
@@ -212,22 +213,6 @@ class HondaSaveImage(io.ComfyNode):
 
                 saved_paths.append(full_path)
 
-        if not raw_image:
-            import torch.nn.functional as F
-            B, H, W, C = images.shape
-            max_dim = max(H, W)
-            if max_dim > max_resolution:
-                scale = max_resolution / max_dim
-                new_H, new_W = int(H * scale), int(W * scale)
-                img_c = images.permute(0, 3, 1, 2)
-                img_c = F.interpolate(img_c, size=(new_H, new_W), mode="bicubic", align_corners=False)
-                preview_tensor = img_c.permute(0, 2, 3, 1)
-            else:
-                preview_tensor = images
-        else:
-            preview_tensor = images
-
-        preview = ui.PreviewImage(preview_tensor)
+        preview = make_preview(images, raw_image=raw_image, max_resolution=max_resolution)
         paths_str = "\n".join(saved_paths)
         return io.NodeOutput(paths_str, ui=preview)
-

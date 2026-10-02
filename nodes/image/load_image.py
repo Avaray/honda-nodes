@@ -7,6 +7,7 @@ import torch
 from PIL import Image, ImageOps
 
 from comfy_api.latest import io, ui
+from .honda_preview import make_preview
 from nodes import LoadImage
 
 from ..metadata.format_translation import detect_format_from_file
@@ -94,22 +95,8 @@ class HondaLoadImage(io.ComfyNode):
             image_path = folder_paths.get_annotated_filepath(image)
             
         if not raw_image:
-            import torch.nn.functional as F
-            B, H, W, C = image_tensor.shape
-            max_dim = max(H, W)
-            if max_dim > max_resolution:
-                scale = max_resolution / max_dim
-                new_H, new_W = int(H * scale), int(W * scale)
-                # Downscale only for the UI preview — the output tensor stays full-res
-                img_c = image_tensor.permute(0, 3, 1, 2)
-                img_c = F.interpolate(img_c, size=(new_H, new_W), mode="bicubic", align_corners=False)
-                preview_tensor = img_c.permute(0, 2, 3, 1)
-            else:
-                preview_tensor = image_tensor
-        else:
-            preview_tensor = image_tensor
-
-
+            pass  # downscaling handled inside make_preview
+        
         # Detect the original format
         img_format = detect_format_from_file(image_path)
         
@@ -135,6 +122,6 @@ class HondaLoadImage(io.ComfyNode):
         elif not ime_path:
             print("[Honda Nodes] Warning: 'ime' CLI not found. Skipping metadata extraction.")
         
-        # Use downscaled tensor for UI preview only; output stays full-resolution
-        preview = ui.PreviewImage(preview_tensor)
+        # Build preview — downscaled for UI unless raw_image is enabled
+        preview = make_preview(image_tensor, raw_image=raw_image, max_resolution=max_resolution)
         return io.NodeOutput(image_tensor, mask_tensor, image_path, metadata_text, img_format, ui=preview)
