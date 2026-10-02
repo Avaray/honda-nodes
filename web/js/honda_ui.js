@@ -245,6 +245,15 @@ app.registerExtension({
                     requestAnimationFrame(() => this._hondaShowState(fileWidget.value));
                 }
             };
+
+            // Catch execution result (e.g. from path_override) to update preview
+            const onExecuted = nodeType.prototype.onExecuted;
+            nodeType.prototype.onExecuted = function(message) {
+                if (onExecuted) onExecuted.apply(this, arguments);
+                if (message?.honda_preview?.[0]?.filename && this._hondaShowState) {
+                    this._hondaShowState(message.honda_preview[0].filename);
+                }
+            };
         }
     }
 });

@@ -98,6 +98,10 @@ class HondaLoadImage(io.ComfyNode):
         elif not ime_path:
             print("[Honda Nodes] Warning: 'ime' CLI not found. Skipping metadata extraction.")
 
-        preview = ui.PreviewImage(image_tensor)
-        return io.NodeOutput(image_tensor, image_path, metadata_text, img_format, ui=preview)
+        # Use a custom key so ComfyUI doesn't render a native preview below the node.
+        # Our JS "executed" handler picks this up and updates the DOM widget instead.
+        return io.NodeOutput(
+            image_tensor, image_path, metadata_text, img_format,
+            ui={"honda_preview": [{"filename": preview_name, "type": "input", "subfolder": ""}]}
+        )
 
