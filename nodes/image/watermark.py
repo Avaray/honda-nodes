@@ -279,7 +279,7 @@ class HondaWatermarkText(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="Honda_WatermarkText",
-            display_name="✏️ Text Watermark",
+            display_name="🖼 Text Watermark",
             category="⚡️ Honda Nodes/🖼 Image",
             description="Creates a text watermark with full font and style control. Connect to Save Image.",
             inputs=[
