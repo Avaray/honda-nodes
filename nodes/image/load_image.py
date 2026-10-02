@@ -17,6 +17,7 @@ class HondaLoadImage(io.ComfyNode):
         input_dir = folder_paths.get_input_directory()
         files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
         files = folder_paths.filter_files_content_types(files, ["image"])
+        options = [""] + sorted(files) if files else [""]
         
         return io.Schema(
             node_id="Honda_LoadImage",
@@ -26,7 +27,8 @@ class HondaLoadImage(io.ComfyNode):
             inputs=[
                 io.Combo.Input(
                     "image",
-                    options=sorted(files) if files else [],
+                    options=options,
+                    default="",
                     upload=io.UploadType.image,
                     image_folder=io.FolderType.input,
                     display_name="Image",
@@ -78,6 +80,8 @@ class HondaLoadImage(io.ComfyNode):
                 mask = np.zeros((64,64), dtype=np.float32)
             mask_tensor = torch.from_numpy(mask)[None,]
         else:
+            if not image:
+                return io.NodeOutput(block_execution="Please select an image in the Load Image node or provide a path_override.")
             # Use standard ComfyUI LoadImage node functionality
             image_tensor, mask_tensor = LoadImage().load_image(image)
             # Determine the absolute path of the loaded image
