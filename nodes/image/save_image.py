@@ -8,7 +8,6 @@ from PIL import Image
 
 import folder_paths
 from comfy_api.latest import io, ui
-from .honda_preview import make_preview
 
 from ..metadata.format_translation import sanitize_for_ime
 from .watermark import HondaWatermark, apply_watermark
@@ -83,20 +82,11 @@ class HondaSaveImage(io.ComfyNode):
                     display_name="Watermark",
                     tooltip="Connect an 'Image Watermark' or 'Text Watermark' node.",
                 ),
-                io.Int.Input(
-                    "max_resolution",
-                    default=1024,
-                    min=256,
-                    max=8192,
-                    step=256,
-                    display_name="Max Resolution",
-                    tooltip="Maximum dimension for preview. Hidden in UI.",
-                ),
                 io.Boolean.Input(
-                    "raw_image",
-                    default=False,
-                    display_name="RAW Image",
-                    tooltip="If enabled, shows the preview in true original quality and dimensions, skipping any UI downscaling.",
+                    "preview_image",
+                    default=True,
+                    display_name="Preview Image",
+                    tooltip="If enabled, shows the saved image directly on the node canvas.",
                 ),
             ],
             outputs=[
@@ -120,8 +110,7 @@ class HondaSaveImage(io.ComfyNode):
         metadata: str = "",
         format_override: str = "",
         watermark: dict | None = None,
-        max_resolution: int = 1024,
-        raw_image: bool = False,
+        preview_image: bool = True,
     ) -> io.NodeOutput:
         filename = (filename or "HondaImage").strip()
         save_dir = (save_path or folder_paths.get_output_directory()).strip()
@@ -213,6 +202,9 @@ class HondaSaveImage(io.ComfyNode):
 
                 saved_paths.append(full_path)
 
-        preview = make_preview(images, raw_image=raw_image, max_resolution=max_resolution)
         paths_str = "\n".join(saved_paths)
-        return io.NodeOutput(paths_str, ui=preview)
+        if preview_image:
+            preview = ui.PreviewImage(images)
+            return io.NodeOutput(paths_str, ui=preview)
+        
+        return io.NodeOutput(paths_str)

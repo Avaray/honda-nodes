@@ -7,7 +7,6 @@ import torch
 from PIL import Image, ImageOps
 
 from comfy_api.latest import io, ui
-from .honda_preview import make_preview
 from nodes import LoadImage
 
 from ..metadata.format_translation import detect_format_from_file
@@ -40,20 +39,11 @@ class HondaLoadImage(io.ComfyNode):
                     display_name="Path Override",
                     tooltip="Absolute path to an image file. If provided, this overrides the selected image in the dropdown.",
                 ),
-                io.Int.Input(
-                    "max_resolution",
-                    default=1024,
-                    min=256,
-                    max=8192,
-                    step=256,
-                    display_name="Max Resolution",
-                    tooltip="Maximum dimension for preview. Hidden in UI.",
-                ),
                 io.Boolean.Input(
-                    "raw_image",
-                    default=False,
-                    display_name="RAW Image",
-                    tooltip="If enabled, shows the preview in true original quality and dimensions, skipping any UI downscaling.",
+                    "preview_image",
+                    default=True,
+                    display_name="Preview Image",
+                    tooltip="If enabled, shows the loaded image directly on the node canvas.",
                 ),
             ],
             outputs=[
@@ -70,8 +60,7 @@ class HondaLoadImage(io.ComfyNode):
         cls, 
         image: str, 
         path_override: str = "", 
-        max_resolution: int = 1024, 
-        raw_image: bool = False
+        preview_image: bool = True
     ) -> io.NodeOutput:
         path_override = (path_override or "").strip()
         
@@ -94,9 +83,6 @@ class HondaLoadImage(io.ComfyNode):
             # Determine the absolute path of the loaded image
             image_path = folder_paths.get_annotated_filepath(image)
             
-        if not raw_image:
-            pass  # downscaling handled inside make_preview
-        
         # Detect the original format
         img_format = detect_format_from_file(image_path)
         
@@ -122,6 +108,8 @@ class HondaLoadImage(io.ComfyNode):
         elif not ime_path:
             print("[Honda Nodes] Warning: 'ime' CLI not found. Skipping metadata extraction.")
         
-        # Build preview — downscaled for UI unless raw_image is enabled
-        preview = make_preview(image_tensor, raw_image=raw_image, max_resolution=max_resolution)
-        return io.NodeOutput(image_tensor, mask_tensor, image_path, metadata_text, img_format, ui=preview)
+        if preview_image:
+            preview = ui.PreviewImage(image_tensor)
+            return io.NodeOutput(image_tensor, mask_tensor, image_path, metadata_text, img_format, ui=preview)
+        
+        return io.NodeOutput(image_tensor, mask_tensor, image_path, metadata_text, img_format)
