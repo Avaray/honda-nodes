@@ -23,6 +23,7 @@ class HondaLoadImage(io.ComfyNode):
                 io.String.Input(
                     "image_file",
                     default="",
+                    socketless=True,
                     display_name="File Name",
                     tooltip="Name of the image file in the input directory.",
                 ),
