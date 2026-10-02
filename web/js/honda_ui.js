@@ -99,13 +99,12 @@ app.registerExtension({
 
                 const node = this;
 
-                // Hide the raw image_file string widget from the node
+                // Hide the raw image_file string widget — it must stay in
+                // node.widgets for serialization (backend reads its value),
+                // but setting hidden=true tells ComfyUI Vue not to render it.
                 const fileWidget = node.widgets?.find(w => w.name === "image_file");
                 if (fileWidget) {
-                    fileWidget.type = "hidden";
-                    if (fileWidget.element) fileWidget.element.style.display = "none";
-                    // Zero out its size contribution
-                    const orig = fileWidget.computeSize;
+                    fileWidget.hidden = true;
                     fileWidget.computeSize = () => [0, -4];
                 }
 
