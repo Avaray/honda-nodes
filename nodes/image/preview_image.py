@@ -11,10 +11,10 @@ class HondaPreviewImage(io.ComfyNode):
             description="Displays an image on the canvas and passes it through for further processing.",
             is_output_node=True,
             inputs=[
-                io.Image.Input("images", display_name="Images"),
+                io.Image.Input("images", display_name="Image"),
             ],
             outputs=[
-                io.Image.Output(display_name="Images"),
+                io.Image.Output(display_name="Image"),
             ],
         )
 
