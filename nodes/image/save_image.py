@@ -86,6 +86,9 @@ class HondaSaveImage(io.ComfyNode):
                 ),
             ],
             outputs=[
+                io.String.Output(display_name="PNG Path"),
+                io.String.Output(display_name="JPG Path"),
+                io.String.Output(display_name="WEBP Path"),
                 io.String.Output(display_name="Saved Paths"),
             ],
         )
@@ -111,13 +114,13 @@ class HondaSaveImage(io.ComfyNode):
         save_dir = (path_override or folder_paths.get_output_directory()).strip()
         os.makedirs(save_dir, exist_ok=True)
 
-        # Determine formats to save
-        format_override = (format_override or "").strip().lower()
-        if format_override == "jpeg":
-            format_override = "jpg"
+        # Determine formats to save — format_override always wins
+        fmt_ov = (format_override or "").strip().lower()
+        if fmt_ov == "jpeg":
+            fmt_ov = "jpg"
 
-        if format_override in ("png", "jpg", "webp"):
-            formats_to_save = [format_override]
+        if fmt_ov in ("png", "jpg", "webp"):
+            formats_to_save = [fmt_ov]
         else:
             formats_to_save = []
             if save_png:
@@ -127,9 +130,10 @@ class HondaSaveImage(io.ComfyNode):
             if save_webp:
                 formats_to_save.append("webp")
             if not formats_to_save:
+                # Fallback: at least save PNG if all toggles are off
                 formats_to_save = ["png"]
 
-        # Determine next counter across all enabled formats
+        # Determine next counter across all enabled formats so numbering is consistent
         existing_files = []
         try:
             existing_files = os.listdir(save_dir)
@@ -148,12 +152,17 @@ class HondaSaveImage(io.ComfyNode):
                         pass
 
         meta_str = (metadata or "").strip()
-        saved_paths = []
+
+        # Per-format tracking: first saved path for each format (last batch wins)
+        png_path: str = ""
+        jpg_path: str = ""
+        webp_path: str = ""
+        all_paths: list[str] = []
 
         for batch_index, img_tensor in enumerate(image):
             i = 255.0 * img_tensor.cpu().numpy()
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-            # Apply watermark (shared helper)
+
             if watermark:
                 img = apply_watermark(img, watermark)
 
@@ -165,13 +174,19 @@ class HondaSaveImage(io.ComfyNode):
 
                 if fmt == "png":
                     img.save(full_path, compress_level=png_compress_level)
+                    if not png_path:
+                        png_path = full_path
                 elif fmt == "jpg":
                     save_img = img.convert("RGB") if img.mode in ("RGBA", "LA", "P") else img
                     save_img.save(full_path, quality=jpg_quality, optimize=True)
+                    if not jpg_path:
+                        jpg_path = full_path
                 else:  # webp
                     img.save(full_path, quality=webp_quality, lossless=webp_lossless)
+                    if not webp_path:
+                        webp_path = full_path
 
-                # Inject metadata via ime using a temp file to avoid Windows cmdline length limit
+                # Inject metadata via ime using a temp file
                 if clean_meta:
                     ime_path = _find_ime()
                     if ime_path:
@@ -188,15 +203,15 @@ class HondaSaveImage(io.ComfyNode):
                                 encoding="utf-8", errors="replace",
                             )
                         except subprocess.CalledProcessError as e:
-                            print(f"[HondaSaveImage] Warning: Failed to inject metadata with ime: {e.stderr or e.stdout or str(e)}")
+                            print(f"[HondaSaveImage] Warning: Failed to inject metadata: {e.stderr or e.stdout or str(e)}")
                         finally:
                             if tmp_path and os.path.exists(tmp_path):
                                 os.unlink(tmp_path)
                     else:
                         print("[HondaSaveImage] Warning: 'ime' CLI not found. Skipping metadata injection.")
 
-                saved_paths.append(full_path)
+                all_paths.append(full_path)
 
-        paths_str = "\n".join(saved_paths)
+        paths_str = "\n".join(all_paths)
         preview = ui.PreviewImage(image)
-        return io.NodeOutput(paths_str, ui=preview)
+        return io.NodeOutput(png_path, jpg_path, webp_path, paths_str, ui=preview)
