@@ -86,10 +86,10 @@ class HondaSaveImage(io.ComfyNode):
                 ),
             ],
             outputs=[
+                io.Array.Output(display_name="Saved Paths"),
                 io.String.Output(display_name="PNG Path"),
                 io.String.Output(display_name="JPG Path"),
                 io.String.Output(display_name="WEBP Path"),
-                io.String.Output(display_name="Saved Paths"),
             ],
         )
 
@@ -110,7 +110,7 @@ class HondaSaveImage(io.ComfyNode):
         webp_lossless: bool = False,
         watermark: dict | None = None,
     ) -> io.NodeOutput:
-        filename = (filename or "HondaImage").strip()
+        filename = (filename or "ComfyUI").strip()
         save_dir = (path_override or folder_paths.get_output_directory()).strip()
         os.makedirs(save_dir, exist_ok=True)
 
@@ -212,6 +212,5 @@ class HondaSaveImage(io.ComfyNode):
 
                 all_paths.append(full_path)
 
-        paths_str = "\n".join(all_paths)
         preview = ui.PreviewImage(image)
-        return io.NodeOutput(png_path, jpg_path, webp_path, paths_str, ui=preview)
+        return io.NodeOutput(all_paths, png_path, jpg_path, webp_path, ui=preview)
