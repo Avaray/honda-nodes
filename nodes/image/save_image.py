@@ -48,6 +48,14 @@ class HondaSaveImage(io.ComfyNode):
                     tooltip="JSON object with metadata to inject via 'ime'.",
                 ),
                 io.String.Input(
+                    "source_path",
+                    default="",
+                    optional=True,
+                    force_input=True,
+                    display_name="Source Path",
+                    tooltip="Original image path to extract metadata from if 'Metadata' is not provided.",
+                ),
+                io.String.Input(
                     "path_override",
                     default="",
                     optional=True,
@@ -98,6 +106,7 @@ class HondaSaveImage(io.ComfyNode):
         cls,
         image: torch.Tensor,
         metadata: str = "",
+        source_path: str = "",
         path_override: str = "",
         format_override: str = "",
         filename: str = "",
@@ -152,6 +161,17 @@ class HondaSaveImage(io.ComfyNode):
                         pass
 
         meta_str = (metadata or "").strip()
+        if (not meta_str or meta_str == "{}") and source_path:
+            source_path = source_path.strip()
+            if os.path.exists(source_path):
+                ime_path = _find_ime()
+                if ime_path:
+                    cmd = [ime_path, source_path]
+                    try:
+                        result = subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8', errors='replace')
+                        meta_str = result.stdout.strip()
+                    except subprocess.CalledProcessError as e:
+                        print(f"[HondaSaveImage] Warning: Failed to extract metadata from source_path: {e.stderr or e.stdout or str(e)}")
 
         # Per-format tracking: first saved path for each format (last batch wins)
         png_path: str = ""
