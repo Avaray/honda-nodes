@@ -42,6 +42,8 @@ const HONDA_STYLE = `
     display: none;
     flex-direction: column;
     gap: 4px;
+    height: 250px;
+    resize: vertical;
 }
 
 .honda-preview-wrap.visible {
@@ -50,7 +52,9 @@ const HONDA_STYLE = `
 
 .honda-preview-wrap img {
     width: 100%;
-    height: auto;
+    flex-grow: 1;
+    min-height: 0;
+    object-fit: contain;
     display: block;
     border-radius: 4px;
 }
@@ -228,7 +232,7 @@ app.registerExtension({
                         if (fileWidget) fileWidget.value = v;
                         showState(v);
                     },
-                    getMinHeight: () => 76,
+                    getMinHeight: () => previewWrap.classList.contains("visible") ? 258 : 82,
                     hideOnZoom: false,
                 });
 
@@ -258,6 +262,53 @@ app.registerExtension({
             };
         }
 
+        if (nodeData.name === "Honda_PreviewImage") {
+            const onNodeCreated = nodeType.prototype.onNodeCreated;
+            nodeType.prototype.onNodeCreated = function () {
+                if (onNodeCreated) onNodeCreated.apply(this, arguments);
+
+                const node = this;
+
+                const container = document.createElement("div");
+                container.style.width = "100%";
+                container.style.height = "250px";
+                container.style.resize = "vertical";
+                container.style.overflow = "hidden";
+                container.style.boxSizing = "border-box";
+                container.style.display = "flex";
+                container.style.alignItems = "center";
+                container.style.justifyContent = "center";
+
+                const img = document.createElement("img");
+                img.style.maxWidth = "100%";
+                img.style.maxHeight = "100%";
+                img.style.objectFit = "contain";
+                img.style.borderRadius = "4px";
+                img.style.display = "none";
+                container.appendChild(img);
+
+                node.addDOMWidget("honda_preview_image_widget", "div", container, {
+                    getValue: () => "",
+                    setValue: () => {},
+                    getMinHeight: () => 258,
+                    hideOnZoom: false,
+                });
+
+                api.addEventListener("executed", (e) => {
+                    const detail = e.detail;
+                    if (detail && detail.node == node.id) {
+                        const output = detail.output;
+                        const files = output?.honda_preview_image;
+                        if (files && files.length > 0) {
+                            const first = files[0];
+                            img.src = api.apiURL(`/view?filename=${encodeURIComponent(first.filename)}&type=${first.type}&t=${Date.now()}`);
+                            img.style.display = "block";
+                        }
+                    }
+                });
+            };
+        }
+
         if (nodeData.name === "Honda_SaveImage") {
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
@@ -270,6 +321,9 @@ app.registerExtension({
                 container.style.gridTemplateColumns = "1fr";
                 container.style.gap = "8px";
                 container.style.width = "100%";
+                container.style.height = "250px";
+                container.style.resize = "vertical";
+                container.style.overflow = "hidden";
                 container.style.boxSizing = "border-box";
                 container.style.padding = "4px";
                 container.style.alignItems = "start";
@@ -295,31 +349,27 @@ app.registerExtension({
                         item.style.flexDirection = "column";
                         item.style.alignItems = "center";
                         item.style.overflow = "hidden";
+                        item.style.height = "100%";
                         
                         const img = document.createElement("img");
                         img.src = api.apiURL(`/view?filename=${encodeURIComponent(p.filename)}&type=${p.type}&t=${Date.now()}`);
-                        img.style.maxWidth = "100%";
+                        img.style.width = "100%";
+                        img.style.flexGrow = "1";
+                        img.style.minHeight = "0";
                         img.style.objectFit = "contain";
                         img.style.borderRadius = "4px";
                         
                         const label = document.createElement("span");
-                        label.textContent = p.format;
+                        label.textContent = p.format || "Preview";
                         label.style.fontSize = "11px";
                         label.style.color = "var(--fg-color, #ccc)";
                         label.style.marginTop = "4px";
                         label.style.fontWeight = "bold";
+                        label.style.flexShrink = "0";
                         
                         item.appendChild(img);
                         item.appendChild(label);
                         container.appendChild(item);
-                    });
-                    
-                    // Force graph redraw to recalculate node height
-                    requestAnimationFrame(() => {
-                        if (node.computeSize) {
-                            node.setSize(node.computeSize());
-                            app.graph.setDirtyCanvas(true, true);
-                        }
                     });
                 };
 

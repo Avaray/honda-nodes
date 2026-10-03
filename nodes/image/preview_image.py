@@ -1,5 +1,12 @@
+import os
+import uuid
+import numpy as np
 import torch
-from comfy_api.latest import io, ui
+from PIL import Image
+
+import folder_paths
+from comfy_api.latest import io
+
 
 class HondaPreviewImage(io.ComfyNode):
     @classmethod
@@ -20,5 +27,16 @@ class HondaPreviewImage(io.ComfyNode):
 
     @classmethod
     def execute(cls, images: torch.Tensor) -> io.NodeOutput:
-        preview = ui.PreviewImage(images)
-        return io.NodeOutput(images, ui=preview)
+        temp_dir = folder_paths.get_temp_directory()
+        os.makedirs(temp_dir, exist_ok=True)
+
+        preview_files = []
+        for img_tensor in images:
+            i = 255.0 * img_tensor.cpu().numpy()
+            img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+            fname = f"honda_preview_{uuid.uuid4().hex[:12]}.png"
+            fpath = os.path.join(temp_dir, fname)
+            img.save(fpath, compress_level=1)
+            preview_files.append({"filename": fname, "type": "temp", "subfolder": ""})
+
+        return io.NodeOutput(images, ui={"honda_preview_image": preview_files})
