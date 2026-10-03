@@ -38,8 +38,8 @@ class HondaLoadImage(io.ComfyNode):
             ],
             outputs=[
                 io.Image.Output(display_name="Image"),
-                io.String.Output(display_name="Path"),
                 io.String.Output(display_name="Metadata"),
+                io.String.Output(display_name="Path"),
                 io.String.Output(display_name="Format"),
             ],
         )
@@ -101,7 +101,7 @@ class HondaLoadImage(io.ComfyNode):
         # Use a custom key so ComfyUI doesn't render a native preview below the node.
         # Our JS "executed" handler picks this up and updates the DOM widget instead.
         return io.NodeOutput(
-            image_tensor, image_path, metadata_text, img_format,
+            image_tensor, metadata_text, image_path, img_format,
             ui={"honda_preview": [{"filename": preview_name, "type": "input", "subfolder": ""}]}
         )
 

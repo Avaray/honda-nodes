@@ -38,7 +38,30 @@ class HondaSaveImage(io.ComfyNode):
             description="Saves an image to disk in one or multiple formats, optionally with a watermark and injected JSON metadata.",
             is_output_node=True,
             inputs=[
-                io.Image.Input("images", display_name="Images"),
+                io.Image.Input("image", display_name="Image"),
+                io.String.Input(
+                    "metadata",
+                    default="{}",
+                    optional=True,
+                    force_input=True,
+                    display_name="Metadata",
+                    tooltip="JSON object with metadata to inject via 'ime'.",
+                ),
+                io.String.Input(
+                    "path_override",
+                    default="",
+                    optional=True,
+                    display_name="Path Override",
+                    tooltip="Absolute path to a directory. If empty, uses the default ComfyUI output directory.",
+                ),
+                io.String.Input(
+                    "format_override",
+                    default="",
+                    optional=True,
+                    force_input=True,
+                    display_name="Format Override",
+                    tooltip="Provide 'png', 'jpg', or 'webp' to save ONLY in that format, ignoring the toggles above.",
+                ),
                 io.String.Input(
                     "filename",
                     default="HondaImage",
@@ -53,29 +76,6 @@ class HondaSaveImage(io.ComfyNode):
                 io.Int.Input("jpg_quality", default=95, min=1, max=100, display_name="JPG Quality"),
                 io.Int.Input("webp_quality", default=95, min=1, max=100, display_name="WEBP Quality", tooltip="Only applies when WEBP Lossless is off."),
                 io.Boolean.Input("webp_lossless", default=False, display_name="WEBP Lossless"),
-                io.String.Input(
-                    "save_path",
-                    default="",
-                    optional=True,
-                    display_name="Save Path",
-                    tooltip="Absolute path to a directory. If empty, uses the default ComfyUI output directory.",
-                ),
-                io.String.Input(
-                    "metadata",
-                    default="{}",
-                    optional=True,
-                    force_input=True,
-                    display_name="Metadata (JSON)",
-                    tooltip="JSON object with metadata to inject via 'ime'.",
-                ),
-                io.String.Input(
-                    "format_override",
-                    default="",
-                    optional=True,
-                    force_input=True,
-                    display_name="Format Override",
-                    tooltip="Provide 'png', 'jpg', or 'webp' to save ONLY in that format, ignoring the toggles above.",
-                ),
                 HondaWatermark.Input(
                     "watermark",
                     optional=True,
@@ -91,7 +91,10 @@ class HondaSaveImage(io.ComfyNode):
     @classmethod
     def execute(
         cls,
-        images: torch.Tensor,
+        image: torch.Tensor,
+        metadata: str = "",
+        path_override: str = "",
+        format_override: str = "",
         filename: str = "",
         save_png: bool = True,
         save_jpg: bool = True,
@@ -100,13 +103,10 @@ class HondaSaveImage(io.ComfyNode):
         jpg_quality: int = 95,
         webp_quality: int = 95,
         webp_lossless: bool = False,
-        save_path: str = "",
-        metadata: str = "",
-        format_override: str = "",
         watermark: dict | None = None,
     ) -> io.NodeOutput:
         filename = (filename or "HondaImage").strip()
-        save_dir = (save_path or folder_paths.get_output_directory()).strip()
+        save_dir = (path_override or folder_paths.get_output_directory()).strip()
         os.makedirs(save_dir, exist_ok=True)
 
         # Determine formats to save
@@ -148,8 +148,8 @@ class HondaSaveImage(io.ComfyNode):
         meta_str = (metadata or "").strip()
         saved_paths = []
 
-        for batch_index, image in enumerate(images):
-            i = 255.0 * image.cpu().numpy()
+        for batch_index, img_tensor in enumerate(image):
+            i = 255.0 * img_tensor.cpu().numpy()
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
             # Apply watermark (shared helper)
             if watermark:
@@ -196,5 +196,5 @@ class HondaSaveImage(io.ComfyNode):
                 saved_paths.append(full_path)
 
         paths_str = "\n".join(saved_paths)
-        preview = ui.PreviewImage(images)
+        preview = ui.PreviewImage(image)
         return io.NodeOutput(paths_str, ui=preview)
