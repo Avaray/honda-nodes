@@ -62,7 +62,7 @@ class HondaSaveImage(io.ComfyNode):
                     optional=True,
                     force_input=True,
                     display_name="Format Override",
-                    tooltip="Provide 'png', 'jpg', or 'webp' to save ONLY in that format, ignoring the toggles above.",
+                    tooltip="Provide 'png', 'jpg', or 'webp' to save ONLY in that format, ignoring the toggles in this node.",
                 ),
                 io.String.Input(
                     "filename",
