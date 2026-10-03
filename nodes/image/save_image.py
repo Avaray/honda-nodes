@@ -213,5 +213,14 @@ class HondaSaveImage(io.ComfyNode):
 
                 all_paths.append(full_path)
 
-        preview = ui.PreviewImage(image)
-        return io.NodeOutput(all_paths, png_path, jpg_path, webp_path, ui=preview)
+        def get_preview_info(full_path, fmt_name):
+            if not full_path:
+                return None
+            return {"filename": os.path.basename(full_path), "type": "output", "format": fmt_name}
+
+        previews = []
+        if png_path: previews.append(get_preview_info(png_path, "PNG"))
+        if jpg_path: previews.append(get_preview_info(jpg_path, "JPG"))
+        if webp_path: previews.append(get_preview_info(webp_path, "WEBP"))
+
+        return io.NodeOutput(all_paths, png_path, jpg_path, webp_path, ui={"honda_save_preview": previews})

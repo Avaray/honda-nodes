@@ -257,5 +257,77 @@ app.registerExtension({
                 }
             };
         }
-    }
+
+        if (nodeData.name === "Honda_SaveImage") {
+            const onNodeCreated = nodeType.prototype.onNodeCreated;
+            nodeType.prototype.onNodeCreated = function () {
+                if (onNodeCreated) onNodeCreated.apply(this, arguments);
+
+                const node = this;
+
+                const container = document.createElement("div");
+                container.style.display = "grid";
+                container.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
+                container.style.gap = "8px";
+                container.style.width = "100%";
+                container.style.boxSizing = "border-box";
+                container.style.padding = "4px";
+                container.style.alignItems = "start";
+
+                node.addDOMWidget("honda_save_preview_widget", "div", container, {
+                    getValue: () => "",
+                    setValue: () => {},
+                    getMinHeight: () => 40,
+                });
+
+                node._hondaUpdateSavePreview = (previews) => {
+                    container.innerHTML = "";
+                    if (!previews || previews.length === 0) return;
+                    
+                    previews.forEach(p => {
+                        if (!p) return;
+                        const item = document.createElement("div");
+                        item.style.display = "flex";
+                        item.style.flexDirection = "column";
+                        item.style.alignItems = "center";
+                        item.style.overflow = "hidden";
+                        
+                        const img = document.createElement("img");
+                        img.src = api.apiURL(`/view?filename=${encodeURIComponent(p.filename)}&type=${p.type}&t=${Date.now()}`);
+                        img.style.maxWidth = "100%";
+                        img.style.objectFit = "contain";
+                        img.style.borderRadius = "4px";
+                        
+                        const label = document.createElement("span");
+                        label.textContent = p.format;
+                        label.style.fontSize = "11px";
+                        label.style.color = "var(--fg-color, #ccc)";
+                        label.style.marginTop = "4px";
+                        label.style.fontWeight = "bold";
+                        
+                        item.appendChild(img);
+                        item.appendChild(label);
+                        container.appendChild(item);
+                    });
+                    
+                    // Force graph redraw to recalculate node height
+                    requestAnimationFrame(() => {
+                        if (node.computeSize) {
+                            node.setSize(node.computeSize());
+                            app.graph.setDirtyCanvas(true, true);
+                        }
+                    });
+                };
+
+                api.addEventListener("executed", (e) => {
+                    const detail = e.detail;
+                    if (detail && detail.node == node.id) {
+                        const output = detail.output;
+                        if (output?.honda_save_preview && node._hondaUpdateSavePreview) {
+                            node._hondaUpdateSavePreview(output.honda_save_preview);
+                        }
+                    }
+                });
+            };
+        }
 });
