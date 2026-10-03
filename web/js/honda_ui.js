@@ -5,17 +5,19 @@ const HONDA_STYLE = `
 .honda-upload-widget {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 6px 8px;
-    box-sizing: border-box;
     width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 6px 8px;
+    gap: 4px;
 }
 
 /* State: no image loaded */
 .honda-dropzone {
     border: 2px dashed #666;
     border-radius: 6px;
-    height: 70px;
+    flex: 1;
+    min-height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -41,9 +43,8 @@ const HONDA_STYLE = `
     overflow: hidden;
     display: none;
     flex-direction: column;
-    gap: 4px;
-    height: 250px;
-    resize: vertical;
+    flex: 1;
+    min-height: 0;
 }
 
 .honda-preview-wrap.visible {
@@ -52,7 +53,7 @@ const HONDA_STYLE = `
 
 .honda-preview-wrap img {
     width: 100%;
-    flex-grow: 1;
+    flex: 1;
     min-height: 0;
     object-fit: contain;
     display: block;
@@ -64,6 +65,7 @@ const HONDA_STYLE = `
     inset: 0;
     background: transparent;
     transition: background 0.15s;
+    pointer-events: none;
 }
 
 .honda-preview-wrap:hover .honda-overlay,
@@ -79,17 +81,62 @@ const HONDA_STYLE = `
     white-space: normal;
     padding: 0;
     pointer-events: none;
+    flex-shrink: 0;
 }
 `;
+
+/**
+ * Shared helper: ties a DOM container's height to the node's actual height.
+ * The container fills the remaining vertical space after accounting for the
+ * title bar and all standard (non-DOM) widgets. The height NEVER grows due
+ * to image content — only due to the user manually resizing the node.
+ *
+ * @param {object} node        - LiteGraph node instance
+ * @param {HTMLElement} container - the container element to resize
+ * @param {object} domWidget   - the widget returned by addDOMWidget (to skip it)
+ * @param {number} minH        - minimum container height in px
+ * @returns {{ getMinHeight: () => number }}
+ */
+function attachResizeToNode(node, container, domWidget, minH = 80) {
+    const TITLE_H   = LiteGraph?.NODE_TITLE_HEIGHT ?? 30;
+    const WIDGET_H  = LiteGraph?.NODE_WIDGET_HEIGHT ?? 20;
+    const PADDING   = 16;
+
+    let currentH = parseInt(container.style.height) || 250;
+
+    const computeH = (size) => {
+        const othersH = (node.widgets || []).reduce((sum, w) => {
+            if (w === domWidget || w.hidden) return sum;
+            if (typeof w.computeSize === "function") {
+                const ws = w.computeSize(size[0]);
+                return sum + (Array.isArray(ws) ? ws[1] : (typeof ws === "number" ? ws : WIDGET_H));
+            }
+            return sum + WIDGET_H;
+        }, 0);
+        return Math.max(minH, size[1] - TITLE_H - othersH - PADDING);
+    };
+
+    const origOnResize = node.onResize;
+    node.onResize = function(size) {
+        origOnResize?.call(this, size);
+        const newH = computeH(size);
+        if (newH !== currentH) {
+            currentH = newH;
+            container.style.height = newH + "px";
+        }
+    };
+
+    return { getMinHeight: () => currentH };
+}
 
 app.registerExtension({
     name: "HondaNodes.UI",
 
     async beforeRegisterNodeDef(nodeType, nodeData) {
 
+        // ── Load Image ────────────────────────────────────────────────────────
         if (nodeData.name === "Honda_LoadImage") {
 
-            // Inject CSS once
             if (!document.getElementById("honda-nodes-style")) {
                 const style = document.createElement("style");
                 style.id = "honda-nodes-style";
@@ -103,9 +150,7 @@ app.registerExtension({
 
                 const node = this;
 
-                // Hide the raw image_file string widget — it must stay in
-                // node.widgets for serialization (backend reads its value),
-                // but setting hidden=true tells ComfyUI Vue not to render it.
+                // Hide the raw image_file string widget — keep it for serialisation
                 const fileWidget = node.widgets?.find(w => w.name === "image_file");
                 if (fileWidget) {
                     fileWidget.hidden = true;
@@ -115,13 +160,12 @@ app.registerExtension({
                 // ── Build DOM ────────────────────────────────────────────────
                 const container = document.createElement("div");
                 container.className = "honda-upload-widget";
+                container.style.height = "120px"; // initial — overwritten by onResize
 
-                // Empty state: dashed zone
                 const dropzone = document.createElement("div");
                 dropzone.className = "honda-dropzone";
                 dropzone.textContent = "📂 Click or Drop Image Here";
 
-                // Loaded state: preview + overlay + filename
                 const previewWrap = document.createElement("div");
                 previewWrap.className = "honda-preview-wrap";
 
@@ -141,7 +185,7 @@ app.registerExtension({
                 container.appendChild(dropzone);
                 container.appendChild(previewWrap);
 
-                // ── Shared helpers ───────────────────────────────────────────
+                // ── State helpers ────────────────────────────────────────────
                 const showState = (filename) => {
                     if (filename) {
                         dropzone.style.display = "none";
@@ -186,13 +230,9 @@ app.registerExtension({
                     }
                 };
 
-                // ── Events on dropzone (empty state) ─────────────────────────
+                // ── Events: dropzone ─────────────────────────────────────────
                 dropzone.addEventListener("click", openFilePicker);
-
-                dropzone.addEventListener("dragover", (e) => {
-                    e.preventDefault();
-                    dropzone.classList.add("drag-over");
-                });
+                dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("drag-over"); });
                 dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag-over"));
                 dropzone.addEventListener("drop", (e) => {
                     e.preventDefault();
@@ -201,13 +241,9 @@ app.registerExtension({
                     if (f?.type.startsWith("image/")) doUpload(f);
                 });
 
-                // ── Events on preview (loaded state) ─────────────────────────
+                // ── Events: preview wrap ─────────────────────────────────────
                 previewWrap.addEventListener("click", openFilePicker);
-
-                previewWrap.addEventListener("dragover", (e) => {
-                    e.preventDefault();
-                    previewWrap.classList.add("drag-over");
-                });
+                previewWrap.addEventListener("dragover", (e) => { e.preventDefault(); previewWrap.classList.add("drag-over"); });
                 previewWrap.addEventListener("dragleave", () => previewWrap.classList.remove("drag-over"));
                 previewWrap.addEventListener("drop", (e) => {
                     e.preventDefault();
@@ -216,30 +252,24 @@ app.registerExtension({
                     if (f?.type.startsWith("image/")) doUpload(f);
                 });
 
-                // ── LiteGraph canvas-level drop ───────────────────────────────
+                // ── Canvas-level drop ────────────────────────────────────────
                 node.onDropFile = function(file) {
-                    if (file?.type.startsWith("image/")) {
-                        doUpload(file);
-                        return true;
-                    }
+                    if (file?.type.startsWith("image/")) { doUpload(file); return true; }
                     return false;
                 };
 
-                // ── Add as DOM widget ────────────────────────────────────────
-                node.addDOMWidget("honda_image_upload", "div", container, {
+                // ── Register DOM widget ──────────────────────────────────────
+                const domWidget = node.addDOMWidget("honda_image_upload", "div", container, {
                     getValue: () => fileWidget?.value ?? "",
-                    setValue: (v) => {
-                        if (fileWidget) fileWidget.value = v;
-                        showState(v);
-                    },
-                    getMinHeight: () => previewWrap.classList.contains("visible") ? 258 : 82,
+                    setValue: (v) => { if (fileWidget) fileWidget.value = v; showState(v); },
+                    getMinHeight: () => resizer.getMinHeight(),
                     hideOnZoom: false,
                 });
 
-                // Store showState so onConfigure can call it
+                const resizer = attachResizeToNode(node, container, domWidget, 80);
+
                 node._hondaShowState = showState;
 
-                // Catch execution result (e.g. from path_override) to update preview
                 api.addEventListener("executed", (e) => {
                     const detail = e.detail;
                     if (detail && detail.node == node.id) {
@@ -251,7 +281,6 @@ app.registerExtension({
                 });
             };
 
-            // Restore preview when workflow loads
             const onConfigure = nodeType.prototype.onConfigure;
             nodeType.prototype.onConfigure = function(info) {
                 if (onConfigure) onConfigure.apply(this, arguments);
@@ -262,6 +291,7 @@ app.registerExtension({
             };
         }
 
+        // ── Preview Image ─────────────────────────────────────────────────────
         if (nodeData.name === "Honda_PreviewImage") {
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
@@ -270,36 +300,40 @@ app.registerExtension({
                 const node = this;
 
                 const container = document.createElement("div");
-                container.style.width = "100%";
-                container.style.height = "250px";
-                container.style.resize = "vertical";
-                container.style.overflow = "hidden";
-                container.style.boxSizing = "border-box";
-                container.style.display = "flex";
-                container.style.alignItems = "center";
-                container.style.justifyContent = "center";
+                container.style.cssText = `
+                    width: 100%;
+                    height: 250px;
+                    overflow: hidden;
+                    box-sizing: border-box;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
 
                 const img = document.createElement("img");
-                img.style.maxWidth = "100%";
-                img.style.maxHeight = "100%";
-                img.style.objectFit = "contain";
-                img.style.borderRadius = "4px";
-                img.style.display = "none";
+                img.style.cssText = `
+                    max-width: 100%;
+                    max-height: 100%;
+                    object-fit: contain;
+                    border-radius: 4px;
+                    display: none;
+                `;
                 container.appendChild(img);
 
-                node.addDOMWidget("honda_preview_image_widget", "div", container, {
+                const domWidget = node.addDOMWidget("honda_preview_image_widget", "div", container, {
                     getValue: () => "",
                     setValue: () => {},
-                    getMinHeight: () => 258,
+                    getMinHeight: () => resizer.getMinHeight(),
                     hideOnZoom: false,
                 });
+
+                const resizer = attachResizeToNode(node, container, domWidget, 80);
 
                 api.addEventListener("executed", (e) => {
                     const detail = e.detail;
                     if (detail && detail.node == node.id) {
-                        const output = detail.output;
-                        const files = output?.honda_preview_image;
-                        if (files && files.length > 0) {
+                        const files = detail.output?.honda_preview_image;
+                        if (files?.length > 0) {
                             const first = files[0];
                             img.src = api.apiURL(`/view?filename=${encodeURIComponent(first.filename)}&type=${first.type}&t=${Date.now()}`);
                             img.style.display = "block";
@@ -309,6 +343,7 @@ app.registerExtension({
             };
         }
 
+        // ── Save Image ────────────────────────────────────────────────────────
         if (nodeData.name === "Honda_SaveImage") {
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
@@ -317,56 +352,45 @@ app.registerExtension({
                 const node = this;
 
                 const container = document.createElement("div");
-                container.style.display = "grid";
-                container.style.gridTemplateColumns = "1fr";
-                container.style.gap = "8px";
-                container.style.width = "100%";
-                container.style.height = "250px";
-                container.style.resize = "vertical";
-                container.style.overflow = "hidden";
-                container.style.boxSizing = "border-box";
-                container.style.padding = "4px";
-                container.style.alignItems = "start";
+                container.style.cssText = `
+                    display: grid;
+                    grid-template-columns: 1fr;
+                    gap: 8px;
+                    width: 100%;
+                    height: 250px;
+                    overflow: hidden;
+                    box-sizing: border-box;
+                    padding: 4px;
+                    align-items: stretch;
+                `;
 
-                node.addDOMWidget("honda_save_preview_widget", "div", container, {
+                const domWidget = node.addDOMWidget("honda_save_preview_widget", "div", container, {
                     getValue: () => "",
                     setValue: () => {},
-                    getMinHeight: () => 40,
+                    getMinHeight: () => resizer.getMinHeight(),
                 });
+
+                const resizer = attachResizeToNode(node, container, domWidget, 80);
 
                 node._hondaUpdateSavePreview = (previews) => {
                     container.innerHTML = "";
-                    if (!previews || previews.length === 0) return;
-                    
-                    const validPreviews = previews.filter(p => p);
-                    if (validPreviews.length === 0) return;
-                    
-                    container.style.gridTemplateColumns = `repeat(${validPreviews.length}, minmax(0, 1fr))`;
-                    
-                    validPreviews.forEach(p => {
+                    const valid = (previews || []).filter(p => p);
+                    if (valid.length === 0) return;
+
+                    container.style.gridTemplateColumns = `repeat(${valid.length}, minmax(0, 1fr))`;
+
+                    valid.forEach(p => {
                         const item = document.createElement("div");
-                        item.style.display = "flex";
-                        item.style.flexDirection = "column";
-                        item.style.alignItems = "center";
-                        item.style.overflow = "hidden";
-                        item.style.height = "100%";
-                        
+                        item.style.cssText = "display:flex; flex-direction:column; align-items:center; overflow:hidden; height:100%;";
+
                         const img = document.createElement("img");
                         img.src = api.apiURL(`/view?filename=${encodeURIComponent(p.filename)}&type=${p.type}&t=${Date.now()}`);
-                        img.style.width = "100%";
-                        img.style.flexGrow = "1";
-                        img.style.minHeight = "0";
-                        img.style.objectFit = "contain";
-                        img.style.borderRadius = "4px";
-                        
+                        img.style.cssText = "width:100%; flex:1; min-height:0; object-fit:contain; border-radius:4px;";
+
                         const label = document.createElement("span");
                         label.textContent = p.format || "Preview";
-                        label.style.fontSize = "11px";
-                        label.style.color = "var(--fg-color, #ccc)";
-                        label.style.marginTop = "4px";
-                        label.style.fontWeight = "bold";
-                        label.style.flexShrink = "0";
-                        
+                        label.style.cssText = "font-size:11px; color:var(--fg-color,#ccc); margin-top:4px; font-weight:bold; flex-shrink:0;";
+
                         item.appendChild(img);
                         item.appendChild(label);
                         container.appendChild(item);

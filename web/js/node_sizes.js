@@ -41,8 +41,8 @@ const NODE_SIZES = {
     Honda_PathJoin:         [340, 240],
 
     // ── Image ─────────────────────────────────────────────────────────────
-    Honda_LoadImage:        [340, 160],
-    Honda_SaveImage:        [340, 200],
+    Honda_LoadImage:        [340, 420],
+    Honda_SaveImage:        [400, 600],
 
     // ── Metadata ──────────────────────────────────────────────────────────
     Honda_ExtractMetadata:  [480, 320],
