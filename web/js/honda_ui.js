@@ -330,4 +330,5 @@ app.registerExtension({
                 });
             };
         }
+    }
 });
