@@ -267,7 +267,7 @@ app.registerExtension({
 
                 const container = document.createElement("div");
                 container.style.display = "grid";
-                container.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
+                container.style.gridTemplateColumns = "1fr";
                 container.style.gap = "8px";
                 container.style.width = "100%";
                 container.style.boxSizing = "border-box";
@@ -284,8 +284,12 @@ app.registerExtension({
                     container.innerHTML = "";
                     if (!previews || previews.length === 0) return;
                     
-                    previews.forEach(p => {
-                        if (!p) return;
+                    const validPreviews = previews.filter(p => p);
+                    if (validPreviews.length === 0) return;
+                    
+                    container.style.gridTemplateColumns = `repeat(${validPreviews.length}, minmax(0, 1fr))`;
+                    
+                    validPreviews.forEach(p => {
                         const item = document.createElement("div");
                         item.style.display = "flex";
                         item.style.flexDirection = "column";
