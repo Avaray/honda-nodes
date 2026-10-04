@@ -159,23 +159,18 @@ def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
 class HondaWatermarkLoad(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
-        input_dir = folder_paths.get_input_directory()
-        files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
-        files = folder_paths.filter_files_content_types(files, ["image"])
-
         return io.Schema(
             node_id="Honda_WatermarkLoad",
             display_name="🖼 Image Watermark",
             category="⚡️ Honda Nodes/🖼 Image",
             description="Creates a watermark from a PNG/image file (supports transparency). Connect to Save Image.",
             inputs=[
-                io.Combo.Input(
-                    "image",
-                    options=sorted(files) if files else [],
-                    upload=io.UploadType.image,
-                    image_folder=io.FolderType.input,
-                    display_name="Image",
-                    tooltip="Select a PNG or image with transparency to use as a watermark.",
+                io.String.Input(
+                    "image_file",
+                    default="",
+                    socketless=True,
+                    display_name="File Name",
+                    tooltip="Name of the watermark image file in the input directory.",
                 ),
                 io.String.Input(
                     "path_override",
@@ -224,7 +219,7 @@ class HondaWatermarkLoad(io.ComfyNode):
     @classmethod
     def execute(
         cls,
-        image: str,
+        image_file: str,
         path_override: str = "",
         opacity: float = 0.7,
         scale: float = 1.0,
@@ -232,10 +227,22 @@ class HondaWatermarkLoad(io.ComfyNode):
         margin: int = 16,
     ) -> io.NodeOutput:
         path_override = (path_override or "").strip()
+
         if path_override and os.path.exists(path_override):
             image_path = path_override
+            # Copy into input dir so /view endpoint can serve it
+            input_dir = folder_paths.get_input_directory()
+            dest_name = os.path.basename(path_override)
+            dest_path = os.path.join(input_dir, dest_name)
+            if not os.path.exists(dest_path):
+                import shutil
+                shutil.copy2(path_override, dest_path)
+            preview_name = dest_name
+        elif image_file:
+            image_path = folder_paths.get_annotated_filepath(image_file)
+            preview_name = image_file
         else:
-            image_path = folder_paths.get_annotated_filepath(image)
+            return io.NodeOutput(block_execution="Please select a watermark image or provide a path_override.")
 
         if not image_path or not os.path.exists(image_path):
             raise FileNotFoundError(f"[Honda WatermarkLoad] Image not found: {image_path!r}")
@@ -250,16 +257,10 @@ class HondaWatermarkLoad(io.ComfyNode):
             "margin": margin,
         }
 
-        # Preview: same mechanism as Honda_PreviewImage (no native ui.PreviewImage)
-        temp_dir = folder_paths.get_temp_directory()
-        os.makedirs(temp_dir, exist_ok=True)
-        preview_arr = np.array(wm_img.convert("RGB")).astype(np.uint8)
-        preview_pil = Image.fromarray(preview_arr)
-        fname = f"honda_preview_{uuid.uuid4().hex[:12]}.png"
-        fpath = os.path.join(temp_dir, fname)
-        preview_pil.save(fpath, compress_level=1)
-
-        return io.NodeOutput(wm_dict, ui={"honda_preview_image": [{"filename": fname, "type": "temp", "subfolder": ""}]})
+        return io.NodeOutput(
+            wm_dict,
+            ui={"honda_preview": [{"filename": preview_name, "type": "input", "subfolder": ""}]}
+        )
 
 
 # ---------------------------------------------------------------------------

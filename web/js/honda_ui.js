@@ -427,13 +427,21 @@ app.registerExtension({
 
                 const node = this;
 
+                // Hide the raw image_file string widget — keep it for serialisation
+                const fileWidget = node.widgets?.find(w => w.name === "image_file");
+                if (fileWidget) {
+                    fileWidget.hidden = true;
+                    fileWidget.computeSize = () => [0, -4];
+                }
+
+                // ── Build DOM ────────────────────────────────────────────────
                 const container = document.createElement("div");
                 container.className = "honda-upload-widget";
                 container.style.height = "120px";
 
                 const dropzone = document.createElement("div");
                 dropzone.className = "honda-dropzone";
-                dropzone.textContent = "Preview";
+                dropzone.textContent = "📂 Click or Drop Watermark Here";
 
                 const previewWrap = document.createElement("div");
                 previewWrap.className = "honda-preview-wrap";
@@ -445,35 +453,133 @@ app.registerExtension({
                 previewImg.alt = "";
 
                 imgContainer.appendChild(previewImg);
+
+                const overlay = document.createElement("div");
+                overlay.className = "honda-overlay";
+
+                const filenameEl = document.createElement("div");
+                filenameEl.className = "honda-filename";
+
+                const clearBtn = document.createElement("button");
+                clearBtn.className = "honda-clear-btn";
+                clearBtn.textContent = "Clear";
+                clearBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    if (fileWidget) fileWidget.value = "";
+                    showState("");
+                });
+
                 previewWrap.appendChild(imgContainer);
+                previewWrap.appendChild(overlay);
+                previewWrap.appendChild(filenameEl);
+                previewWrap.appendChild(clearBtn);
+
                 container.appendChild(dropzone);
                 container.appendChild(previewWrap);
 
-                const domWidget = node.addDOMWidget("honda_watermark_preview_widget", "div", container, {
-                    getValue: () => "",
-                    setValue: () => {},
+                // ── State helpers ────────────────────────────────────────────
+                const showState = (filename) => {
+                    if (filename) {
+                        dropzone.style.display = "none";
+                        previewWrap.classList.add("visible");
+                        filenameEl.textContent = filename;
+                        previewImg.src = api.apiURL(
+                            `/view?filename=${encodeURIComponent(filename)}&type=input&t=${Date.now()}`
+                        );
+                    } else {
+                        dropzone.style.display = "";
+                        previewWrap.classList.remove("visible");
+                        previewImg.src = "";
+                        filenameEl.textContent = "";
+                    }
+                    app.graph.setDirtyCanvas(true, true);
+                };
+
+                const openFilePicker = () => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = (e) => {
+                        const f = e.target.files[0];
+                        if (f) doUpload(f);
+                    };
+                    input.click();
+                };
+
+                const doUpload = async (file) => {
+                    const body = new FormData();
+                    body.append("image", file);
+                    body.append("type", "input");
+                    try {
+                        const resp = await api.fetchApi("/upload/image", { method: "POST", body });
+                        const data = await resp.json();
+                        if (data.name) {
+                            if (fileWidget) fileWidget.value = data.name;
+                            showState(data.name);
+                        }
+                    } catch (e) {
+                        console.error("[Honda Nodes] Upload failed", e);
+                    }
+                };
+
+                // ── Events: dropzone ─────────────────────────────────────────
+                dropzone.addEventListener("click", openFilePicker);
+                dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("drag-over"); });
+                dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag-over"));
+                dropzone.addEventListener("drop", (e) => {
+                    e.preventDefault();
+                    dropzone.classList.remove("drag-over");
+                    const f = e.dataTransfer?.files[0];
+                    if (f?.type.startsWith("image/")) doUpload(f);
+                });
+
+                // ── Events: preview wrap ─────────────────────────────────────
+                previewWrap.addEventListener("click", openFilePicker);
+                previewWrap.addEventListener("dragover", (e) => { e.preventDefault(); previewWrap.classList.add("drag-over"); });
+                previewWrap.addEventListener("dragleave", () => previewWrap.classList.remove("drag-over"));
+                previewWrap.addEventListener("drop", (e) => {
+                    e.preventDefault();
+                    previewWrap.classList.remove("drag-over");
+                    const f = e.dataTransfer?.files[0];
+                    if (f?.type.startsWith("image/")) doUpload(f);
+                });
+
+                // ── Canvas-level drop ────────────────────────────────────────
+                node.onDropFile = function(file) {
+                    if (file?.type.startsWith("image/")) { doUpload(file); return true; }
+                    return false;
+                };
+
+                // ── Register DOM widget ──────────────────────────────────────
+                const domWidget = node.addDOMWidget("honda_watermark_upload", "div", container, {
+                    getValue: () => fileWidget?.value ?? "",
+                    setValue: (v) => { if (fileWidget) fileWidget.value = v; showState(v); },
                     getMinHeight: () => resizer.getMinHeight(),
                     hideOnZoom: false,
                 });
 
                 const resizer = attachResizeToNode(node, container, domWidget, 80);
 
+                node._hondaShowState = showState;
+
                 api.addEventListener("executed", (e) => {
                     const detail = e.detail;
                     if (detail && detail.node == node.id) {
-                        const files = detail.output?.honda_preview_image;
-                        if (files?.length > 0) {
-                            const first = files[0];
-                            previewImg.src = api.apiURL(`/view?filename=${encodeURIComponent(first.filename)}&type=${first.type}&t=${Date.now()}`);
-                            dropzone.style.display = "none";
-                            previewWrap.classList.add("visible");
-                        } else {
-                            dropzone.style.display = "";
-                            previewWrap.classList.remove("visible");
-                            previewImg.src = "";
+                        const output = detail.output;
+                        if (output?.honda_preview?.[0]?.filename && node._hondaShowState) {
+                            node._hondaShowState(output.honda_preview[0].filename);
                         }
                     }
                 });
+            };
+
+            const onConfigure = nodeType.prototype.onConfigure;
+            nodeType.prototype.onConfigure = function(info) {
+                if (onConfigure) onConfigure.apply(this, arguments);
+                const fileWidget = this.widgets?.find(w => w.name === "image_file");
+                if (fileWidget?.value && this._hondaShowState) {
+                    requestAnimationFrame(() => this._hondaShowState(fileWidget.value));
+                }
             };
         }
 
