@@ -41,9 +41,9 @@ const NODE_SIZES = {
     Honda_PathJoin:         [340, 240],
 
     // ── Image ─────────────────────────────────────────────────────────────
-    Honda_LoadImage:        [280, 420],
+    Honda_LoadImage:        [280, 460],
     Honda_SaveImage:        [320, 500],
-    Honda_PreviewImage:     [280, 420],
+    Honda_PreviewImage:     [280, 400],
     Honda_WatermarkLoad:    [340, 200],
     Honda_WatermarkText:    [340, 260],
 
