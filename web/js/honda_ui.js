@@ -35,7 +35,6 @@ const HONDA_STYLE = `
     color: #eee;
 }
 
-/* State: image loaded — the preview IS the drop target */
 .honda-preview-wrap {
     position: relative;
     cursor: pointer;
@@ -51,14 +50,24 @@ const HONDA_STYLE = `
     display: flex;
 }
 
-.honda-preview-wrap img {
-    width: 100%;
+.honda-img-container {
     flex: 1;
+    position: relative;
     min-height: 0;
+    width: 100%;
+}
+
+.honda-img-container img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
     display: block;
     border-radius: 4px;
 }
+
 
 .honda-preview-wrap .honda-overlay {
     position: absolute;
@@ -215,8 +224,13 @@ app.registerExtension({
                 const previewWrap = document.createElement("div");
                 previewWrap.className = "honda-preview-wrap";
 
+                const imgContainer = document.createElement("div");
+                imgContainer.className = "honda-img-container";
+
                 const previewImg = document.createElement("img");
                 previewImg.alt = "";
+
+                imgContainer.appendChild(previewImg);
 
                 const overlay = document.createElement("div");
                 overlay.className = "honda-overlay";
@@ -233,7 +247,7 @@ app.registerExtension({
                     showState("");
                 });
 
-                previewWrap.appendChild(previewImg);
+                previewWrap.appendChild(imgContainer);
                 previewWrap.appendChild(overlay);
                 previewWrap.appendChild(filenameEl);
                 previewWrap.appendChild(clearBtn);
@@ -366,10 +380,14 @@ app.registerExtension({
                 const previewWrap = document.createElement("div");
                 previewWrap.className = "honda-preview-wrap";
 
+                const imgContainer = document.createElement("div");
+                imgContainer.className = "honda-img-container";
+
                 const previewImg = document.createElement("img");
                 previewImg.alt = "";
 
-                previewWrap.appendChild(previewImg);
+                imgContainer.appendChild(previewImg);
+                previewWrap.appendChild(imgContainer);
                 container.appendChild(dropzone);
                 container.appendChild(previewWrap);
 
@@ -455,15 +473,19 @@ app.registerExtension({
                         const item = document.createElement("div");
                         item.className = "honda-save-grid-item";
 
+                        const imgContainer = document.createElement("div");
+                        imgContainer.className = "honda-img-container";
+
                         const img = document.createElement("img");
                         img.src = api.apiURL(`/view?filename=${encodeURIComponent(p.filename)}&type=${p.type}&t=${Date.now()}`);
-                        img.style.cssText = "width:100%; flex:1; min-height:0; object-fit:contain; border-radius:4px;";
+
+                        imgContainer.appendChild(img);
 
                         const label = document.createElement("div");
                         label.className = "honda-filename";
                         label.textContent = p.format || "Preview";
 
-                        item.appendChild(img);
+                        item.appendChild(imgContainer);
                         item.appendChild(label);
                         saveGrid.appendChild(item);
                     });
