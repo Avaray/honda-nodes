@@ -43,10 +43,14 @@ const NODE_SIZES = {
     // ── Image ─────────────────────────────────────────────────────────────
     Honda_LoadImage:        [340, 420],
     Honda_SaveImage:        [400, 600],
+    Honda_PreviewImage:     [340, 420],
+    Honda_WatermarkLoad:    [340, 200],
+    Honda_WatermarkText:    [340, 260],
 
     // ── Metadata ──────────────────────────────────────────────────────────
     Honda_ExtractMetadata:  [480, 320],
     Honda_WriteMetadata:    [400, 220],
+    Honda_ConvertMetadataFormat: [340, 160],
 };
 
 app.registerExtension({
