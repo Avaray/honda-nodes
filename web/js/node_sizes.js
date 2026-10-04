@@ -63,7 +63,10 @@ app.registerExtension({
         const orig = nodeType.prototype.onNodeCreated;
         nodeType.prototype.onNodeCreated = function () {
             orig?.apply(this, arguments);
-            this.size = [...size]; // spread so each instance gets its own array
+            this.size = [...size];
+            if (this.onResize) {
+                this.onResize(this.size);
+            }
         };
     },
 });
