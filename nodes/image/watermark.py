@@ -10,12 +10,12 @@ The watermark dict is consumed by HondaSaveImage.
 
 import os
 import sys
+import uuid
 import numpy as np
-import torch
 from PIL import Image, ImageDraw, ImageFont
 
 import folder_paths
-from comfy_api.latest import io, ui
+from comfy_api.latest import io
 
 
 # ---------------------------------------------------------------------------
@@ -250,10 +250,16 @@ class HondaWatermarkLoad(io.ComfyNode):
             "margin": margin,
         }
 
-        # Show a preview of the watermark image in the node canvas
-        preview_arr = np.array(wm_img.convert("RGB")).astype(np.float32) / 255.0
-        preview_tensor = torch.from_numpy(preview_arr)[None,]
-        return io.NodeOutput(wm_dict, ui=ui.PreviewImage(preview_tensor))
+        # Preview: same mechanism as Honda_PreviewImage (no native ui.PreviewImage)
+        temp_dir = folder_paths.get_temp_directory()
+        os.makedirs(temp_dir, exist_ok=True)
+        preview_arr = np.array(wm_img.convert("RGB")).astype(np.uint8)
+        preview_pil = Image.fromarray(preview_arr)
+        fname = f"honda_preview_{uuid.uuid4().hex[:12]}.png"
+        fpath = os.path.join(temp_dir, fname)
+        preview_pil.save(fpath, compress_level=1)
+
+        return io.NodeOutput(wm_dict, ui={"honda_preview_image": [{"filename": fname, "type": "temp", "subfolder": ""}]})
 
 
 # ---------------------------------------------------------------------------

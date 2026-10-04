@@ -419,6 +419,64 @@ app.registerExtension({
             };
         }
 
+        // ── Watermark Load ────────────────────────────────────────────────────
+        if (nodeData.name === "Honda_WatermarkLoad") {
+            const onNodeCreated = nodeType.prototype.onNodeCreated;
+            nodeType.prototype.onNodeCreated = function () {
+                if (onNodeCreated) onNodeCreated.apply(this, arguments);
+
+                const node = this;
+
+                const container = document.createElement("div");
+                container.className = "honda-upload-widget";
+                container.style.height = "120px";
+
+                const dropzone = document.createElement("div");
+                dropzone.className = "honda-dropzone";
+                dropzone.textContent = "Preview";
+
+                const previewWrap = document.createElement("div");
+                previewWrap.className = "honda-preview-wrap";
+
+                const imgContainer = document.createElement("div");
+                imgContainer.className = "honda-img-container";
+
+                const previewImg = document.createElement("img");
+                previewImg.alt = "";
+
+                imgContainer.appendChild(previewImg);
+                previewWrap.appendChild(imgContainer);
+                container.appendChild(dropzone);
+                container.appendChild(previewWrap);
+
+                const domWidget = node.addDOMWidget("honda_watermark_preview_widget", "div", container, {
+                    getValue: () => "",
+                    setValue: () => {},
+                    getMinHeight: () => resizer.getMinHeight(),
+                    hideOnZoom: false,
+                });
+
+                const resizer = attachResizeToNode(node, container, domWidget, 80);
+
+                api.addEventListener("executed", (e) => {
+                    const detail = e.detail;
+                    if (detail && detail.node == node.id) {
+                        const files = detail.output?.honda_preview_image;
+                        if (files?.length > 0) {
+                            const first = files[0];
+                            previewImg.src = api.apiURL(`/view?filename=${encodeURIComponent(first.filename)}&type=${first.type}&t=${Date.now()}`);
+                            dropzone.style.display = "none";
+                            previewWrap.classList.add("visible");
+                        } else {
+                            dropzone.style.display = "";
+                            previewWrap.classList.remove("visible");
+                            previewImg.src = "";
+                        }
+                    }
+                });
+            };
+        }
+
         // ── Save Image ────────────────────────────────────────────────────────
         if (nodeData.name === "Honda_SaveImage") {
             const onNodeCreated = nodeType.prototype.onNodeCreated;
