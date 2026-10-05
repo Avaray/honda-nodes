@@ -16,7 +16,7 @@ jobs:
       version: ${{ steps.version_check.outputs.version }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Read local version from pyproject.toml
         id: version_check
@@ -52,7 +52,7 @@ jobs:
     if: needs.check-version.outputs.is_new_version == 'true'
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Publish Custom Node
         uses: Comfy-Org/publish-node-action@main
