@@ -26,12 +26,14 @@ const DOWNLOAD_STYLE = `
 
 .honda-download-row-inputs {
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
     align-items: center;
 }
 
 .honda-download-input {
-    flex: 1;
+    flex: 1 1 120px;
+    min-width: 0;
     background: var(--comfy-input-bg);
     color: var(--input-text);
     border: 1px solid var(--border-color);
@@ -51,6 +53,7 @@ const DOWNLOAD_STYLE = `
     font-size: 16px;
     padding: 2px 4px;
     transition: transform 0.1s;
+    flex-shrink: 0;
 }
 .honda-download-btn:hover {
     transform: scale(1.1);
@@ -230,6 +233,7 @@ app.registerExtension({
                         delBtn.textContent = "❌";
                         delBtn.title = "Remove";
                         delBtn.onclick = () => {
+                            if (!confirm("Are you sure you want to remove this download?")) return;
                             downloads.splice(index, 1);
                             saveConfig();
                             updateUI();
