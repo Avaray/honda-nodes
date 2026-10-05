@@ -6,7 +6,6 @@ const DOWNLOAD_STYLE = `
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 8px;
     box-sizing: border-box;
     width: 100%;
     color: var(--fg-color);
@@ -44,7 +43,7 @@ const DOWNLOAD_STYLE = `
 
 .honda-download-input {
     flex: 1;
-    min-width: 250px;
+    min-width: 100px;
     background: var(--comfy-input-bg);
     color: var(--input-text);
     border: 1px solid var(--border-color);
