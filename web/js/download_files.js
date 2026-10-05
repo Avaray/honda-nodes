@@ -312,6 +312,8 @@ app.registerExtension({
                                     } catch (e) {}
                                 } else {
                                     if (!item.url || !item.dir) return;
+                                    if (item.status === "done" && !confirm("This file is already downloaded. Are you sure you want to download it again?")) return;
+                                    
                                     item.status = "downloading";
                                     item.progress = 0;
                                     updateUI();
@@ -348,17 +350,23 @@ app.registerExtension({
                         } else if (downloads.length > 0 && allDownloaded) {
                             downloadAllBtn.textContent = "✅ All Files Downloaded (Click to Force)";
                             downloadAllBtn.style.background = "#4caf50";
-                            downloadAllBtn.onclick = startDownloadAll;
+                            downloadAllBtn.onclick = () => {
+                                if (confirm("All files are already downloaded. Are you sure you want to force re-download all of them?")) {
+                                    startDownloadAll(true);
+                                }
+                            };
                         } else {
                             downloadAllBtn.textContent = "📥 Download All";
                             downloadAllBtn.style.background = "var(--primary-color, #4488ff)";
-                            downloadAllBtn.onclick = startDownloadAll;
+                            downloadAllBtn.onclick = () => startDownloadAll(false);
                         }
                     };
                     
-                    const startDownloadAll = async () => {
+                    const startDownloadAll = async (force = false) => {
                         for (const item of downloads) {
                             if (!item.url || !item.dir) continue;
+                            if (item.status === "done" && !force) continue;
+                            
                             item.status = "downloading";
                             item.progress = 0;
                             updateUI();
