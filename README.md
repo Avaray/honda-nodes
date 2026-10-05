@@ -1,6 +1,6 @@
 # Honda Nodes for ComfyUI
 
-A comprehensive collection of utility nodes for [ComfyUI](https://github.com/comfyanonymous/ComfyUI), fully optimized for the new **ComfyUI V3 API** (Nodes 2.0).
+A collection of utility nodes for [ComfyUI](https://github.com/comfyanonymous/ComfyUI), fully optimized for the new **ComfyUI V3 API** (Nodes 2.0).
 
 ## Features
 
