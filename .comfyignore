@@ -1,0 +1,17 @@
+# Exclude development and tooling files from the published registry package.
+# Syntax is identical to .gitignore.
+
+# Downloaded binaries (installed at runtime via install.py)
+bin/
+
+# Developer notes and internal docs
+docs/
+
+# Debug / prototype scripts
+scratch/
+inspect_comfy.py
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
