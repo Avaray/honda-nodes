@@ -42,6 +42,9 @@ from .nodes.fs.read_file import HondaReadFile
 from .nodes.fs.path_normalize import HondaPathNormalize
 from .nodes.fs.path_join import HondaPathJoin
 
+# Tools nodes
+from .nodes.tools.download_files import HondaDownloadFiles
+
 class HondaNodesExtension(ComfyExtension):
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
         return [
@@ -77,6 +80,7 @@ class HondaNodesExtension(ComfyExtension):
             HondaReadFile,
             HondaPathNormalize,
             HondaPathJoin,
+            HondaDownloadFiles,
         ]
 
 

@@ -51,6 +51,8 @@ const NODE_SIZES = {
     Honda_ExtractMetadata:  [480, 320],
     Honda_WriteMetadata:    [400, 220],
     Honda_ConvertMetadataFormat: [340, 160],
+    // ── Tools ─────────────────────────────────────────────────────────────
+    Honda_DownloadFiles:    [400, 300],
 };
 
 app.registerExtension({
