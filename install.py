@@ -126,11 +126,16 @@ def install_dependencies():
         ime_dest = os.path.join(BIN_DIR, "ime.exe")
     elif system == "darwin":
         is_arm = "arm" in arch or "aarch" in arch
-        ime_url = f"{ime_base}/ime-darwin-{'arm64' if is_arm else 'amd64'}"
+        ime_url = f"{ime_base}/ime-macos-{'arm64' if is_arm else 'amd64'}"
         ime_dest = os.path.join(BIN_DIR, "ime")
     else:  # linux
-        is_arm = "arm" in arch or "aarch" in arch
-        ime_url = f"{ime_base}/ime-linux-{'arm64' if is_arm else 'amd64'}"
+        if "armv7" in arch or "armhf" in arch:
+            linux_arch = "armv7"
+        elif "arm" in arch or "aarch" in arch:
+            linux_arch = "arm64"
+        else:
+            linux_arch = "amd64"
+        ime_url = f"{ime_base}/ime-linux-{linux_arch}"
         ime_dest = os.path.join(BIN_DIR, "ime")
 
     if not os.path.exists(ime_dest):
