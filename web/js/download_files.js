@@ -256,7 +256,9 @@ app.registerExtension({
                             delBtn.textContent = "❌";
                             delBtn.title = "Remove";
                             delBtn.onclick = () => {
-                                if (!confirm("Are you sure you want to remove this download?")) return;
+                                if (item.dir || item.url) {
+                                    if (!confirm("Are you sure you want to remove this download?")) return;
+                                }
                                 downloads.splice(index, 1);
                                 saveConfig();
                                 updateUI();
