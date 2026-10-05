@@ -13,6 +13,28 @@ from aiohttp import web
 ACTIVE_DOWNLOADS = {}
 DOWNLOADS_LOCK = threading.Lock()
 
+@PromptServer.instance.routes.post("/honda/tools/download/check")
+async def api_check_downloads(request):
+    data = await request.json()
+    results = {}
+    for item in data:
+        url = item.get("url")
+        directory = item.get("dir")
+        if not url or not directory:
+            continue
+            
+        if os.path.isabs(directory):
+            target_dir = directory
+        else:
+            target_dir = os.path.join(folder_paths.base_path, directory)
+            
+        filename = os.path.basename(urlparse(url).path) or "downloaded_file"
+        target_path = os.path.join(target_dir, filename)
+        
+        results[url] = os.path.exists(target_path)
+        
+    return web.json_response({"status": "success", "results": results})
+
 @PromptServer.instance.routes.post("/honda/tools/download/cancel")
 async def api_cancel_download(request):
     data = await request.json()

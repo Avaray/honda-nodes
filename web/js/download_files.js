@@ -402,19 +402,64 @@ app.registerExtension({
                     }
                 });
 
+                const checkFilesExist = async () => {
+                    if (downloads.length === 0) return;
+                    try {
+                        const payload = downloads.map(d => ({ url: d.url, dir: d.dir }));
+                        const resp = await api.fetchApi("/honda/tools/download/check", {
+                            method: "POST",
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await resp.json();
+                        if (data.results) {
+                            let changed = false;
+                            downloads.forEach(d => {
+                                if (data.results[d.url]) {
+                                    if (d.status !== "done") {
+                                        d.status = "done";
+                                        d.progress = 100;
+                                        changed = true;
+                                    }
+                                } else {
+                                    if (d.status === "done") {
+                                        d.status = "idle";
+                                        d.progress = 0;
+                                        changed = true;
+                                    }
+                                }
+                            });
+                            if (changed) {
+                                saveConfig();
+                                updateUI();
+                            }
+                        }
+                    } catch (e) {}
+                };
+                
+                node._hondaCheckFilesExist = checkFilesExist;
+
                 updateUI();
+                checkFilesExist();
 
                 const domWidget = node.addDOMWidget("honda_download_widget", "div", container, {
                     getValue: () => configWidget?.value ?? "[]",
                     setValue: (v) => { 
                         if (configWidget) configWidget.value = v; 
-                        try { downloads = JSON.parse(v || "[]"); updateUI(); } catch(e){}
+                        try { downloads = JSON.parse(v || "[]"); updateUI(); checkFilesExist(); } catch(e){}
                     },
                     getMinHeight: () => resizer.getMinHeight(),
                     hideOnZoom: false,
                 });
 
                 const resizer = attachResizeToNode(node, container, domWidget, 200);
+            };
+
+            const onConfigure = nodeType.prototype.onConfigure;
+            nodeType.prototype.onConfigure = function(info) {
+                if (onConfigure) onConfigure.apply(this, arguments);
+                if (this._hondaCheckFilesExist) {
+                    this._hondaCheckFilesExist();
+                }
             };
         }
     }
