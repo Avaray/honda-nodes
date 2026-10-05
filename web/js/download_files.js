@@ -26,14 +26,25 @@ const DOWNLOAD_STYLE = `
 
 .honda-download-row-inputs {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.honda-download-row-top {
+    display: flex;
     gap: 4px;
     align-items: center;
 }
 
+.honda-download-btn-group {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
 .honda-download-input {
-    flex: 1 1 120px;
-    min-width: 0;
+    flex: 1;
+    min-width: 250px;
     background: var(--comfy-input-bg);
     color: var(--input-text);
     border: 1px solid var(--border-color);
@@ -239,10 +250,22 @@ app.registerExtension({
                             updateUI();
                         };
                         
+                        const topRow = document.createElement("div");
+                        topRow.className = "honda-download-row-top";
+
+                        const btnGroup = document.createElement("div");
+                        btnGroup.className = "honda-download-btn-group";
+
+                        btnGroup.appendChild(btn);
+                        btnGroup.appendChild(delBtn);
+
+                        // Layout: URL and buttons on top
+                        topRow.appendChild(urlInput);
+                        topRow.appendChild(btnGroup);
+
+                        // Directory on bottom line
+                        inputsRow.appendChild(topRow);
                         inputsRow.appendChild(dirInput);
-                        inputsRow.appendChild(urlInput);
-                        inputsRow.appendChild(btn);
-                        inputsRow.appendChild(delBtn);
                         
                         const progressContainer = document.createElement("div");
                         progressContainer.className = "honda-download-progress-bar";
