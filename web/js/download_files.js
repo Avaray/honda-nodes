@@ -272,12 +272,13 @@ app.registerExtension({
                             btnGroup.appendChild(btn);
                             btnGroup.appendChild(delBtn);
 
-                            // Layout: Directory on top, URL and buttons on bottom
-                            topRow.appendChild(urlInput);
+                            // Layout: Directory and buttons on top
+                            topRow.appendChild(dirInput);
                             topRow.appendChild(btnGroup);
 
-                            inputsRow.appendChild(dirInput);
+                            // URL on bottom line
                             inputsRow.appendChild(topRow);
+                            inputsRow.appendChild(urlInput);
                             
                             const progressContainer = document.createElement("div");
                             progressContainer.className = "honda-download-progress-bar";
