@@ -19,6 +19,9 @@ This package provides a wide variety of utility nodes across several categories:
 1. Open ComfyUI and go to **Manager**.
 2. Click **Install via Git URL**.
 3. Paste the URL of this repository.
+   ```
+   https://github.com/honda-nodes/honda-nodes.git
+   ```
 4. The Manager will automatically clone the repository and run the setup script (`install.py`) to download necessary fast background binaries (`jq` and `ime`).
 5. Restart ComfyUI.
 
