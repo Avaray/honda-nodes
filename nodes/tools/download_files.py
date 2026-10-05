@@ -10,6 +10,18 @@ from comfy_api.latest import io
 from server import PromptServer
 from aiohttp import web
 
+ACTIVE_DOWNLOADS = {}
+DOWNLOADS_LOCK = threading.Lock()
+
+@PromptServer.instance.routes.post("/honda/tools/download/cancel")
+async def api_cancel_download(request):
+    data = await request.json()
+    url = data.get("url")
+    with DOWNLOADS_LOCK:
+        if url in ACTIVE_DOWNLOADS:
+            ACTIVE_DOWNLOADS[url]["cancel"] = True
+    return web.json_response({"status": "cancelled"})
+
 # We will register an API route to handle manual downloads directly from the UI.
 @PromptServer.instance.routes.post("/honda/tools/download")
 async def api_download_file(request):
@@ -36,12 +48,12 @@ async def api_download_file(request):
     if not filename:
         filename = "downloaded_file"
         
-    # Check if there is a content-disposition header? To keep it simple, we'll just use the URL basename.
-    # If users need to rename, we might add a field later, but for now URL basename is fine.
-    
     target_path = os.path.join(target_dir, filename)
     
     def download_thread():
+        with DOWNLOADS_LOCK:
+            ACTIVE_DOWNLOADS[url] = {"cancel": False}
+        canceled = False
         try:
             def reporthook(blocknum, blocksize, totalsize):
                 if totalsize > 0:
@@ -61,18 +73,31 @@ async def api_download_file(request):
                 blocksize = 8192
                 blocknum = 0
                 while True:
+                    with DOWNLOADS_LOCK:
+                        if ACTIVE_DOWNLOADS.get(url, {}).get("cancel", False):
+                            canceled = True
+                            break
                     buffer = response.read(blocksize)
                     if not buffer:
                         break
                     blocknum += 1
                     out_file.write(buffer)
                     reporthook(blocknum, blocksize, totalsize)
-                    
-            PromptServer.instance.send_sync("honda_download_progress", {
-                "url": url,
-                "progress": 100.0,
-                "status": "done"
-            })
+            
+            if canceled:
+                if os.path.exists(target_path):
+                    os.remove(target_path)
+                PromptServer.instance.send_sync("honda_download_progress", {
+                    "url": url,
+                    "progress": 0.0,
+                    "status": "idle"
+                })
+            else:
+                PromptServer.instance.send_sync("honda_download_progress", {
+                    "url": url,
+                    "progress": 100.0,
+                    "status": "done"
+                })
         except Exception as e:
             PromptServer.instance.send_sync("honda_download_progress", {
                 "url": url,
@@ -80,6 +105,10 @@ async def api_download_file(request):
                 "status": "error",
                 "error": str(e)
             })
+        finally:
+            with DOWNLOADS_LOCK:
+                if url in ACTIVE_DOWNLOADS:
+                    del ACTIVE_DOWNLOADS[url]
 
     threading.Thread(target=download_thread, daemon=True).start()
     return web.json_response({"status": "started", "filename": filename})

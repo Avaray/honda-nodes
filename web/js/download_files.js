@@ -211,91 +211,156 @@ app.registerExtension({
                     app.graph.setDirtyCanvas(true, true);
                 };
 
-                const updateUI = () => {
-                    listContainer.innerHTML = "";
-                    let allDownloaded = true;
-                    
-                    downloads.forEach((item, index) => {
-                        const row = document.createElement("div");
-                        row.className = "honda-download-row";
+                    const updateUI = () => {
+                        listContainer.innerHTML = "";
+                        let allDownloaded = true;
+                        let anyDownloading = false;
                         
-                        const inputsRow = document.createElement("div");
-                        inputsRow.className = "honda-download-row-inputs";
-                        
-                        const dirInput = document.createElement("input");
-                        dirInput.className = "honda-download-input";
-                        dirInput.placeholder = "Directory (e.g. models/checkpoints)";
-                        dirInput.value = item.dir || "";
-                        dirInput.onchange = (e) => { item.dir = e.target.value; saveConfig(); };
-                        
-                        const urlInput = document.createElement("input");
-                        urlInput.className = "honda-download-input";
-                        urlInput.placeholder = "URL";
-                        urlInput.value = item.url || "";
-                        urlInput.onchange = (e) => { item.url = e.target.value; saveConfig(); };
-                        
-                        const btn = document.createElement("button");
-                        btn.className = "honda-download-btn";
-                        btn.textContent = item.status === "done" ? "✅" : "📥";
-                        btn.title = "Download this file";
-                        
-                        const delBtn = document.createElement("button");
-                        delBtn.className = "honda-download-btn";
-                        delBtn.textContent = "❌";
-                        delBtn.title = "Remove";
-                        delBtn.onclick = () => {
-                            if (!confirm("Are you sure you want to remove this download?")) return;
-                            downloads.splice(index, 1);
-                            saveConfig();
-                            updateUI();
-                        };
-                        
-                        const topRow = document.createElement("div");
-                        topRow.className = "honda-download-row-top";
+                        downloads.forEach((item, index) => {
+                            if (item.status === "downloading") anyDownloading = true;
+                            if (item.status !== "done") allDownloaded = false;
 
-                        const btnGroup = document.createElement("div");
-                        btnGroup.className = "honda-download-btn-group";
+                            const row = document.createElement("div");
+                            row.className = "honda-download-row";
+                            
+                            const inputsRow = document.createElement("div");
+                            inputsRow.className = "honda-download-row-inputs";
+                            
+                            const dirInput = document.createElement("input");
+                            dirInput.className = "honda-download-input";
+                            dirInput.placeholder = "Directory (e.g. models/checkpoints)";
+                            dirInput.value = item.dir || "";
+                            dirInput.onchange = (e) => { item.dir = e.target.value; saveConfig(); };
+                            
+                            const urlInput = document.createElement("input");
+                            urlInput.className = "honda-download-input";
+                            urlInput.placeholder = "URL";
+                            urlInput.value = item.url || "";
+                            urlInput.onchange = (e) => { item.url = e.target.value; saveConfig(); };
+                            
+                            const btn = document.createElement("button");
+                            btn.className = "honda-download-btn";
+                            
+                            if (item.status === "downloading") {
+                                btn.textContent = "⏹️";
+                                btn.title = "Cancel download";
+                            } else if (item.status === "done") {
+                                btn.textContent = "✅";
+                                btn.title = "Redownload";
+                            } else {
+                                btn.textContent = "📥";
+                                btn.title = "Download";
+                            }
+                            
+                            const delBtn = document.createElement("button");
+                            delBtn.className = "honda-download-btn";
+                            delBtn.textContent = "❌";
+                            delBtn.title = "Remove";
+                            delBtn.onclick = () => {
+                                if (!confirm("Are you sure you want to remove this download?")) return;
+                                downloads.splice(index, 1);
+                                saveConfig();
+                                updateUI();
+                            };
+                            
+                            const topRow = document.createElement("div");
+                            topRow.className = "honda-download-row-top";
 
-                        btnGroup.appendChild(btn);
-                        btnGroup.appendChild(delBtn);
+                            const btnGroup = document.createElement("div");
+                            btnGroup.className = "honda-download-btn-group";
 
-                        // Layout: URL and buttons on top
-                        topRow.appendChild(urlInput);
-                        topRow.appendChild(btnGroup);
+                            btnGroup.appendChild(btn);
+                            btnGroup.appendChild(delBtn);
 
-                        // Directory on bottom line
-                        inputsRow.appendChild(topRow);
-                        inputsRow.appendChild(dirInput);
+                            // Layout: Directory on top, URL and buttons on bottom
+                            topRow.appendChild(urlInput);
+                            topRow.appendChild(btnGroup);
+
+                            inputsRow.appendChild(dirInput);
+                            inputsRow.appendChild(topRow);
+                            
+                            const progressContainer = document.createElement("div");
+                            progressContainer.className = "honda-download-progress-bar";
+                            const progressFill = document.createElement("div");
+                            progressFill.className = "honda-download-progress-fill";
+                            progressFill.style.width = (item.progress || 0) + "%";
+                            
+                            if (item.status === "error") {
+                                progressFill.style.background = "red";
+                                progressFill.style.width = "100%";
+                            } else if (item.status === "done") {
+                                progressFill.style.background = "#4caf50";
+                                progressFill.style.width = "100%";
+                            }
+                            
+                            progressContainer.appendChild(progressFill);
+                            row.appendChild(inputsRow);
+                            row.appendChild(progressContainer);
+                            listContainer.appendChild(row);
+                            
+                            // Handle single download/cancel
+                            btn.onclick = async () => {
+                                if (item.status === "downloading") {
+                                    item.status = "idle";
+                                    updateUI();
+                                    try {
+                                        await api.fetchApi("/honda/tools/download/cancel", {
+                                            method: "POST",
+                                            body: JSON.stringify({ url: item.url })
+                                        });
+                                    } catch (e) {}
+                                } else {
+                                    if (!item.url || !item.dir) return;
+                                    item.status = "downloading";
+                                    item.progress = 0;
+                                    updateUI();
+                                    try {
+                                        await api.fetchApi("/honda/tools/download", {
+                                            method: "POST",
+                                            body: JSON.stringify({ url: item.url, directory: item.dir })
+                                        });
+                                    } catch (e) {
+                                        item.status = "error";
+                                        updateUI();
+                                    }
+                                }
+                            };
+                        });
                         
-                        const progressContainer = document.createElement("div");
-                        progressContainer.className = "honda-download-progress-bar";
-                        const progressFill = document.createElement("div");
-                        progressFill.className = "honda-download-progress-fill";
-                        progressFill.style.width = (item.progress || 0) + "%";
-                        
-                        if (item.status === "error") {
-                            progressFill.style.background = "red";
-                            progressFill.style.width = "100%";
-                        } else if (item.status === "done") {
-                            progressFill.style.background = "#4caf50";
-                            progressFill.style.width = "100%";
+                        if (anyDownloading) {
+                            downloadAllBtn.textContent = "⏹️ Cancel All Downloads";
+                            downloadAllBtn.style.background = "#f44336";
+                            downloadAllBtn.onclick = async () => {
+                                downloads.forEach(async (item) => {
+                                    if (item.status === "downloading") {
+                                        item.status = "idle";
+                                        try {
+                                            await api.fetchApi("/honda/tools/download/cancel", {
+                                                method: "POST",
+                                                body: JSON.stringify({ url: item.url })
+                                            });
+                                        } catch (e) {}
+                                    }
+                                });
+                                updateUI();
+                            };
+                        } else if (downloads.length > 0 && allDownloaded) {
+                            downloadAllBtn.textContent = "✅ All Files Downloaded (Click to Force)";
+                            downloadAllBtn.style.background = "#4caf50";
+                            downloadAllBtn.onclick = startDownloadAll;
+                        } else {
+                            downloadAllBtn.textContent = "📥 Download All";
+                            downloadAllBtn.style.background = "var(--primary-color, #4488ff)";
+                            downloadAllBtn.onclick = startDownloadAll;
                         }
-                        
-                        progressContainer.appendChild(progressFill);
-                        row.appendChild(inputsRow);
-                        row.appendChild(progressContainer);
-                        listContainer.appendChild(row);
-                        
-                        if (item.status !== "done") allDownloaded = false;
-                        
-                        // Handle single download
-                        btn.onclick = async () => {
-                            if (!item.url || !item.dir) return;
+                    };
+                    
+                    const startDownloadAll = async () => {
+                        for (const item of downloads) {
+                            if (!item.url || !item.dir) continue;
                             item.status = "downloading";
                             item.progress = 0;
-                            btn.textContent = "⏳";
                             updateUI();
-                            
                             try {
                                 await api.fetchApi("/honda/tools/download", {
                                     method: "POST",
@@ -305,41 +370,14 @@ app.registerExtension({
                                 item.status = "error";
                                 updateUI();
                             }
-                        };
-                    });
-                    
-                    if (downloads.length > 0 && allDownloaded) {
-                        downloadAllBtn.textContent = "✅ All Files Downloaded (Click to Force)";
-                        downloadAllBtn.style.background = "#4caf50";
-                    } else {
-                        downloadAllBtn.textContent = "📥 Download All";
-                        downloadAllBtn.style.background = "var(--primary-color, #4488ff)";
-                    }
-                };
-                
-                addBtn.onclick = () => {
-                    downloads.push({ dir: "models/checkpoints", url: "", status: "idle", progress: 0 });
-                    saveConfig();
-                    updateUI();
-                };
-                
-                downloadAllBtn.onclick = async () => {
-                    for (const item of downloads) {
-                        if (!item.url || !item.dir) continue;
-                        item.status = "downloading";
-                        item.progress = 0;
-                        updateUI();
-                        try {
-                            await api.fetchApi("/honda/tools/download", {
-                                method: "POST",
-                                body: JSON.stringify({ url: item.url, directory: item.dir })
-                            });
-                        } catch (e) {
-                            item.status = "error";
-                            updateUI();
                         }
-                    }
-                };
+                    };
+                    
+                    addBtn.onclick = () => {
+                        downloads.push({ dir: "models/checkpoints", url: "", status: "idle", progress: 0 });
+                        saveConfig();
+                        updateUI();
+                    };
 
                 // Listen to global updates
                 window.addEventListener("honda_download_update", (e) => {
