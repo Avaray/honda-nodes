@@ -1,6 +1,6 @@
 [project]
 name = "honda-nodes"
-description = "A comprehensive collection of utility nodes for ComfyUI, built for the V3 API (Nodes 2.0). Covers text manipulation, file system operations, JSON parsing, image metadata, and more."
+description = "A collection of utility nodes for ComfyUI, built for the V3 API (Nodes 2.0). Covers text manipulation, file system operations, JSON parsing, image metadata, and more."
 version = "1.0.0"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
@@ -10,10 +10,10 @@ authors = [
 
 [project.urls]
 Repository = "https://github.com/Avaray/honda-nodes"
-Homepage = "https://github.com/Avaray/honda-nodes"
+Homepage = "https://dav.one/image-metadata-editor/"
 
 [tool.comfy]
 PublisherId = "avaray"
 DisplayName = "⚡️ Honda Nodes"
-Icon = ""
+Icon = "https://raw.githubusercontent.com/Avaray/honda-nodes/main/icon.png"
 requires-comfyui = ">=1.0.0"
