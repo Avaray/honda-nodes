@@ -23,6 +23,7 @@ from .nodes.image.load_image import HondaLoadImage
 from .nodes.image.save_image import HondaSaveImage
 from .nodes.image.preview_image import HondaPreviewImage
 from .nodes.image.watermark import HondaWatermarkLoad, HondaWatermarkText
+from .nodes.image.image_size import HondaImageSize
 from .nodes.json.json_get_value import HondaJSONGetValue
 from .nodes.json.json_set_key import HondaJSONSetKey
 from .nodes.json.json_delete_key import HondaJSONDeleteKey
@@ -76,6 +77,7 @@ class HondaNodesExtension(ComfyExtension):
             HondaPreviewImage,
             HondaWatermarkLoad,
             HondaWatermarkText,
+            HondaImageSize,
             HondaJSONGetValue,
             HondaJSONSetKey,
             HondaJSONDeleteKey,
