@@ -2,7 +2,7 @@
 
 A specialized node pack for [ComfyUI](https://github.com/comfyanonymous/ComfyUI), heavily focused on **image metadata editing and manipulation**, and fully optimized for the new **ComfyUI V3 API** (Nodes 2.0).
 
-![Example Nodes](.github/screenshots/screenshot.jpg)
+![Example Nodes](https://raw.githubusercontent.com/Avaray/honda-nodes/refs/heads/main/.github/screenshots/screenshot.jpg)
 
 At its core, this project is built around the integrated [IME](https://github.com/Avaray/image-metadata-editor) tool for secure, lossless metadata operations. Think of the other nodes (JSON parsing, text manipulation, file system operations, and future logic components) as foundational building blocks. They exist to support the core metadata tools, allowing you to orchestrate complex automation pipelines, process data effectively, and perform format conversions directly within your workflows.
 
