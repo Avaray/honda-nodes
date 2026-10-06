@@ -263,6 +263,7 @@ app.registerExtension({
                         downloads.splice(index, 1);
                         saveConfig();
                         updateUI();
+                        checkFilesExist();
                     }
                 });
 
