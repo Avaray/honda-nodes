@@ -29,10 +29,10 @@ jobs:
           PUBLISHER_ID=$(grep 'PublisherId' pyproject.toml | head -1 | sed 's/PublisherId = "\(.*\)"/\1/')
           echo "Package: $PUBLISHER_ID/$PACKAGE_NAME"
 
-          REGISTRY_URL="https://registry.comfy.org/nodes/${PUBLISHER_ID}/${PACKAGE_NAME}"
-          REGISTRY_RESPONSE=$(curl -s --max-time 10 "$REGISTRY_URL" || echo "")
+          REGISTRY_URL="https://api.comfy.org/nodes/${PACKAGE_NAME}/versions"
+          REGISTRY_RESPONSE=$(curl -s --max-time 10 "$REGISTRY_URL" || echo "[]")
 
-          REGISTRY_VERSION=$(echo "$REGISTRY_RESPONSE" | grep -oP '"latest_version"\s*:\s*"\K[^"]+' | head -1 || echo "")
+          REGISTRY_VERSION=$(echo "$REGISTRY_RESPONSE" | jq -r '.[0].version // empty' || echo "")
 
           if [ -z "$REGISTRY_VERSION" ]; then
             echo "Could not fetch registry version (first publish or API error). Proceeding."
