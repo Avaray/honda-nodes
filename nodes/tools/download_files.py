@@ -192,7 +192,7 @@ class HondaDownloadFiles(io.ComfyNode):
             node_id="Honda_DownloadFiles",
             display_name="🛠️ Download Files",
             category="⚡️ Honda Nodes/🛠️ Tools",
-            description="Downloads specified files to specified directories. Can be run manually from the UI or during workflow execution.",
+            description="Downloads specified files to specified directories. Triggered manually from the node UI — does not run automatically when the workflow executes.",
             is_output_node=True,
             inputs=[
                 io.String.Input(
@@ -208,105 +208,6 @@ class HondaDownloadFiles(io.ComfyNode):
 
     @classmethod
     def execute(cls, downloads_config: str = "[]") -> io.NodeOutput:
-        try:
-            downloads = json.loads(downloads_config)
-        except Exception:
-            downloads = []
-            
-        # When workflow runs, we can optionally download any missing files synchronously.
-        for item in downloads:
-            url = item.get("url", "").strip()
-            directory = item.get("dir", "").strip()
-            if not url or not directory:
-                continue
-                
-            if os.path.isabs(directory):
-                target_dir = directory
-            else:
-                target_dir = os.path.join(folder_paths.base_path, directory)
-                
-            os.makedirs(target_dir, exist_ok=True)
-            filename = os.path.basename(urlparse(url).path) or "downloaded_file"
-            target_path = os.path.join(target_dir, filename)
-            
-            # If it already exists, skip
-            if not os.path.exists(target_path):
-                print(f"[Honda Nodes] Downloading {url} to {target_path}...")
-                PromptServer.instance.send_sync("honda_download_progress", {
-                    "url": url,
-                    "progress": 0.0,
-                    "status": "downloading"
-                })
-                try:
-                    initial_size = 0
-                    if os.path.exists(target_path):
-                        initial_size = os.path.getsize(target_path)
-
-                    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                    if initial_size > 0:
-                        req.add_header('Range', f'bytes={initial_size}-')
-
-                    try:
-                        response = urllib.request.urlopen(req)
-                        is_partial = (response.getcode() == 206)
-                    except urllib.error.HTTPError as e:
-                        if e.code == 416:  # Range Not Satisfiable
-                            PromptServer.instance.send_sync("honda_download_progress", {
-                                "url": url, "progress": 100.0, "status": "done"
-                            })
-                            print(f"[Honda Nodes] Download already complete: {filename}")
-                            continue
-                        raise e
-
-                    mode = 'ab' if is_partial else 'wb'
-                    if not is_partial:
-                        initial_size = 0
-
-                    content_length = int(response.getheader('Content-Length', 0))
-                    totalsize = content_length + initial_size if content_length > 0 else 0
-                    blocksize = 8192
-                    downloaded = initial_size
-
-                    def reporthook():
-                        if totalsize > 0:
-                            percent = min(100.0, downloaded * 100.0 / totalsize)
-                        else:
-                            percent = 0.0
-                        PromptServer.instance.send_sync("honda_download_progress", {
-                            "url": url,
-                            "progress": percent,
-                            "status": "downloading"
-                        })
-
-                    with open(target_path, mode) as out_file:
-                        while True:
-                            buffer = response.read(blocksize)
-                            if not buffer:
-                                break
-                            out_file.write(buffer)
-                            downloaded += len(buffer)
-                            reporthook()
-                            
-                    print(f"[Honda Nodes] Download complete: {filename}")
-                    PromptServer.instance.send_sync("honda_download_progress", {
-                        "url": url,
-                        "progress": 100.0,
-                        "status": "done"
-                    })
-                except Exception as e:
-                    print(f"[Honda Nodes] Failed to download {url}: {e}")
-                    PromptServer.instance.send_sync("honda_download_progress", {
-                        "url": url,
-                        "progress": 0.0,
-                        "status": "error",
-                        "error": str(e)
-                    })
-            else:
-                # Tell UI it's done since it exists
-                PromptServer.instance.send_sync("honda_download_progress", {
-                    "url": url,
-                    "progress": 100.0,
-                    "status": "done"
-                })
-
+        # Downloads are triggered manually through the node UI.
+        # This node intentionally does nothing when the workflow runs.
         return io.NodeOutput()
