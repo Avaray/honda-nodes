@@ -238,6 +238,10 @@ app.registerExtension({
                             } catch (_) {}
                         } else {
                             if (!item.url || !item.dir) return;
+                            if (item.isDuplicate) {
+                                alert("Cannot download duplicate files. Please remove or fix the duplicated entry.");
+                                return;
+                            }
                             if (item.status === "done" && !confirm("This file is already downloaded. Are you sure you want to download it again?")) return;
                             item.status = "downloading";
                             item.progress = 0;
@@ -314,14 +318,33 @@ app.registerExtension({
                         let anyCanceling = false;
                         let anyValid = false;
                         
+                        // Detect duplicates
+                        const seen = {};
+                        downloads.forEach(item => item.isDuplicate = false);
+                        downloads.forEach((item, index) => {
+                            if (!item.url || !item.dir) return;
+                            const filename = getFilename(item.url);
+                            const pathKey = (item.dir.replace(/\\/g, "/").replace(/\/$/, "") + "/" + filename).toLowerCase();
+                            if (seen[pathKey] !== undefined) {
+                                item.isDuplicate = true;
+                                downloads[seen[pathKey]].isDuplicate = true;
+                            } else {
+                                seen[pathKey] = index;
+                            }
+                        });
+
                         downloads.forEach((item, index) => {
                             if (item.status === "downloading") anyDownloading = true;
                             if (item.status === "canceling") anyCanceling = true;
                             if (item.status !== "done") allDownloaded = false;
-                            if (item.url && item.dir) anyValid = true;
+                            if (item.url && item.dir && !item.isDuplicate) anyValid = true;
 
                             const row = document.createElement("div");
                             row.className = "honda-download-row";
+                            if (item.isDuplicate) {
+                                row.style.borderColor = "#ff9800";
+                            }
+
                             
                             const inputsRow = document.createElement("div");
                             inputsRow.className = "honda-download-row-inputs";
@@ -412,6 +435,11 @@ app.registerExtension({
                                 btn.textContent = "⬇️";
                                 btn.title = "Download";
                                 if (!item.url || !item.dir) {
+                                    btn.style.filter = "grayscale(100%)";
+                                    btn.style.cursor = "not-allowed";
+                                } else if (item.isDuplicate) {
+                                    btn.textContent = "⚠️";
+                                    btn.title = "Duplicate file path. Please change URL or directory.";
                                     btn.style.filter = "grayscale(100%)";
                                     btn.style.cursor = "not-allowed";
                                 }
@@ -513,7 +541,7 @@ app.registerExtension({
                     
                     const startDownloadAll = async (force = false) => {
                         for (const item of downloads) {
-                            if (!item.url || !item.dir) continue;
+                            if (!item.url || !item.dir || item.isDuplicate) continue;
                             if (item.status === "canceling") continue; // never overwrite a canceling item
                             if (item.status === "done" && !force) continue;
                             
