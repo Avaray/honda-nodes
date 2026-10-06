@@ -8,7 +8,7 @@ const HONDA_STYLE = `
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    padding: 6px 8px;
+    padding: 6px 0;
     gap: 4px;
 }
 
