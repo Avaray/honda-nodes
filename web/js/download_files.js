@@ -229,13 +229,13 @@ app.registerExtension({
                             dirInput.className = "honda-download-input";
                             dirInput.placeholder = "Directory (e.g. models/checkpoints)";
                             dirInput.value = item.dir || "";
-                            dirInput.onchange = (e) => { item.dir = e.target.value; saveConfig(); };
+                            dirInput.onchange = (e) => { item.dir = e.target.value; saveConfig(); if (node._hondaCheckFilesExist) node._hondaCheckFilesExist(); };
                             
                             const urlInput = document.createElement("input");
                             urlInput.className = "honda-download-input";
                             urlInput.placeholder = "URL";
                             urlInput.value = item.url || "";
-                            urlInput.onchange = (e) => { item.url = e.target.value; saveConfig(); };
+                            urlInput.onchange = (e) => { item.url = e.target.value; saveConfig(); if (node._hondaCheckFilesExist) node._hondaCheckFilesExist(); };
                             
                             const btn = document.createElement("button");
                             btn.className = "honda-download-btn";
@@ -384,7 +384,7 @@ app.registerExtension({
                     };
                     
                     addBtn.onclick = () => {
-                        downloads.push({ dir: "models/checkpoints", url: "", status: "idle", progress: 0 });
+                        downloads.push({ dir: "", url: "", status: "idle", progress: 0 });
                         saveConfig();
                         updateUI();
                     };
