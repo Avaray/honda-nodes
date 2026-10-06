@@ -349,7 +349,7 @@ app.registerExtension({
                                 updateUI();
                             };
                         } else if (downloads.length > 0 && allDownloaded) {
-                            downloadAllBtn.textContent = "✅ All Files Downloaded (Click to Force)";
+                            downloadAllBtn.textContent = "✅ All Files Downloaded";
                             downloadAllBtn.style.background = "#4caf50";
                             downloadAllBtn.onclick = () => {
                                 if (confirm("All files are already downloaded. Are you sure you want to force re-download all of them?")) {
