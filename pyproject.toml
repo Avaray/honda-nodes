@@ -7,6 +7,9 @@ requires-python = ">=3.9"
 authors = [
     { name = "Avaray" }
 ]
+dependencies = [
+    "comfyui-frontend-package>=1.50.0"
+]
 
 [project.urls]
 Repository = "https://github.com/Avaray/honda-nodes"
@@ -16,4 +19,4 @@ Homepage = "https://dav.one/image-metadata-editor/"
 PublisherId = "avaray"
 DisplayName = "⚡️ Honda Nodes"
 Icon = "https://raw.githubusercontent.com/Avaray/honda-nodes/main/icon.png"
-requires-comfyui = ">=1.0.0"
+requires-comfyui = ">=0.38.0"
