@@ -42,6 +42,7 @@ from .nodes.fs.delete_file import HondaDeleteFile
 from .nodes.fs.read_file import HondaReadFile
 from .nodes.fs.path_normalize import HondaPathNormalize
 from .nodes.fs.path_join import HondaPathJoin
+from .nodes.fs.file_hash import HondaFileHash
 
 # Tools nodes
 from .nodes.tools.download_files import HondaDownloadFiles
@@ -94,6 +95,7 @@ class HondaNodesExtension(ComfyExtension):
             HondaReadFile,
             HondaPathNormalize,
             HondaPathJoin,
+            HondaFileHash,
             HondaDownloadFiles,
             HondaPrintToConsole,
             HondaArrayFromText,
