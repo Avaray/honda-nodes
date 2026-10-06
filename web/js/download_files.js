@@ -210,13 +210,25 @@ app.registerExtension({
                     app.graph.setDirtyCanvas(true, true);
                 };
 
+                    const getFilename = (url) => {
+                        if (!url) return "";
+                        try {
+                            const p = new URL(url).pathname;
+                            return p.split("/").filter(Boolean).pop() || url;
+                        } catch {
+                            return url.split("/").filter(Boolean).pop() || url;
+                        }
+                    };
+
                     const updateUI = () => {
                         listContainer.innerHTML = "";
                         let allDownloaded = true;
                         let anyDownloading = false;
+                        let anyCanceling = false;
                         
                         downloads.forEach((item, index) => {
                             if (item.status === "downloading") anyDownloading = true;
+                            if (item.status === "canceling") anyCanceling = true;
                             if (item.status !== "done") allDownloaded = false;
 
                             const row = document.createElement("div");
@@ -234,17 +246,32 @@ app.registerExtension({
                             const urlInput = document.createElement("input");
                             urlInput.className = "honda-download-input";
                             urlInput.placeholder = "URL";
-                            urlInput.value = item.url || "";
-                            urlInput.onchange = (e) => { item.url = e.target.value; saveConfig(); if (node._hondaCheckFilesExist) node._hondaCheckFilesExist(); };
+                            // When blurred: show only filename; when focused: show full URL
+                            urlInput.value = item.url ? getFilename(item.url) : "";
+                            urlInput.addEventListener("focus", () => {
+                                urlInput.value = item.url || "";
+                            });
+                            urlInput.addEventListener("blur", (e) => {
+                                item.url = e.target.value.trim();
+                                saveConfig();
+                                urlInput.value = item.url ? getFilename(item.url) : "";
+                                if (node._hondaCheckFilesExist) node._hondaCheckFilesExist();
+                            });
                             
                             const btn = document.createElement("button");
                             btn.className = "honda-download-btn";
                             
-                            if (item.status === "downloading") {
-                                btn.textContent = "❌";
+                            if (item.status === "canceling") {
+                                btn.textContent = "⏳";
+                                btn.title = "Canceling...";
+                                btn.disabled = true;
+                                btn.style.opacity = "0.4";
+                                btn.style.cursor = "not-allowed";
+                            } else if (item.status === "downloading") {
+                                btn.textContent = "⏹️";
                                 btn.title = "Cancel download";
                             } else if (item.status === "done") {
-                                btn.textContent = "✔️";
+                                btn.textContent = "✅";
                                 btn.title = "Redownload";
                             } else {
                                 btn.textContent = "📥";
@@ -293,6 +320,8 @@ app.registerExtension({
                             } else if (item.status === "done") {
                                 progressFill.style.background = "#4caf50";
                                 progressFill.style.width = "100%";
+                            } else if (item.status === "canceling") {
+                                progressFill.style.background = "#ff9800";
                             }
                             
                             progressContainer.appendChild(progressFill);
@@ -303,7 +332,8 @@ app.registerExtension({
                             // Handle single download/cancel
                             btn.onclick = async () => {
                                 if (item.status === "downloading") {
-                                    item.status = "idle";
+                                    // Set to canceling immediately — block further interaction
+                                    item.status = "canceling";
                                     updateUI();
                                     try {
                                         await api.fetchApi("/honda/tools/download/cancel", {
@@ -311,6 +341,9 @@ app.registerExtension({
                                             body: JSON.stringify({ url: item.url })
                                         });
                                     } catch (e) {}
+                                    // Final state will be set by the backend websocket message (idle)
+                                } else if (item.status === "canceling") {
+                                    return; // Locked — do nothing
                                 } else {
                                     if (!item.url || !item.dir) return;
                                     if (item.status === "done" && !confirm("This file is already downloaded. Are you sure you want to download it again?")) return;
@@ -331,26 +364,35 @@ app.registerExtension({
                             };
                         });
                         
-                        if (anyDownloading) {
+                        if (anyCanceling) {
+                            downloadAllBtn.textContent = "⏳ Canceling...";
+                            downloadAllBtn.style.background = "#888";
+                            downloadAllBtn.disabled = true;
+                            downloadAllBtn.style.cursor = "not-allowed";
+                            downloadAllBtn.onclick = null;
+                        } else if (anyDownloading) {
                             downloadAllBtn.textContent = "⏹️ Cancel All Downloads";
                             downloadAllBtn.style.background = "#f44336";
+                            downloadAllBtn.disabled = false;
+                            downloadAllBtn.style.cursor = "pointer";
                             downloadAllBtn.onclick = async () => {
-                                downloads.forEach(async (item) => {
-                                    if (item.status === "downloading") {
-                                        item.status = "idle";
-                                        try {
-                                            await api.fetchApi("/honda/tools/download/cancel", {
-                                                method: "POST",
-                                                body: JSON.stringify({ url: item.url })
-                                            });
-                                        } catch (e) {}
-                                    }
-                                });
+                                // Mark all downloading items as canceling at once
+                                const toCancel = downloads.filter(item => item.status === "downloading");
+                                toCancel.forEach(item => { item.status = "canceling"; });
                                 updateUI();
+                                // Fire all cancel requests in parallel
+                                await Promise.all(toCancel.map(item =>
+                                    api.fetchApi("/honda/tools/download/cancel", {
+                                        method: "POST",
+                                        body: JSON.stringify({ url: item.url })
+                                    }).catch(() => {})
+                                ));
                             };
                         } else if (downloads.length > 0 && allDownloaded) {
-                            downloadAllBtn.textContent = "✅ All Files Downloaded";
+                            downloadAllBtn.textContent = "✅ All Files Downloaded (Click to Force)";
                             downloadAllBtn.style.background = "#4caf50";
+                            downloadAllBtn.disabled = false;
+                            downloadAllBtn.style.cursor = "pointer";
                             downloadAllBtn.onclick = () => {
                                 if (confirm("All files are already downloaded. Are you sure you want to force re-download all of them?")) {
                                     startDownloadAll(true);
@@ -359,6 +401,8 @@ app.registerExtension({
                         } else {
                             downloadAllBtn.textContent = "📥 Download All";
                             downloadAllBtn.style.background = "var(--primary-color, #4488ff)";
+                            downloadAllBtn.disabled = false;
+                            downloadAllBtn.style.cursor = "pointer";
                             downloadAllBtn.onclick = () => startDownloadAll(false);
                         }
                     };
