@@ -92,8 +92,10 @@ const DOWNLOAD_STYLE = `
     text-align: center;
     font-size: 12px;
     white-space: nowrap;
-    flex: 1;
+    overflow: hidden;
+    flex: 1 1 130px;
     min-width: 0;
+    box-sizing: border-box;
 }
 .honda-download-add-btn:hover {
     background: rgba(255,255,255,0.2);
@@ -109,8 +111,10 @@ const DOWNLOAD_STYLE = `
     font-weight: bold;
     text-align: center;
     white-space: nowrap;
-    flex: 1;
+    overflow: hidden;
+    flex: 1 1 130px;
     min-width: 0;
+    box-sizing: border-box;
 }
 .honda-download-all-btn:hover {
     filter: brightness(1.1);
@@ -121,6 +125,7 @@ const DOWNLOAD_STYLE = `
     flex-wrap: wrap;
     gap: 6px;
     margin-top: 4px;
+    overflow: hidden;
 }
 `;
 
