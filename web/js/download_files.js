@@ -191,7 +191,56 @@ app.registerExtension({
                 listContainer.style.display = "flex";
                 listContainer.style.flexDirection = "column";
                 listContainer.style.gap = "8px";
-                
+
+                // Persistent event delegation — survives innerHTML rebuilds inside listContainer.
+                // Per-item buttons set data-action and data-index; we handle them here.
+                listContainer.addEventListener("click", async (e) => {
+                    const btn = e.target.closest("[data-action]");
+                    if (!btn) return;
+                    const index = parseInt(btn.dataset.index, 10);
+                    if (isNaN(index)) return;
+                    const item = downloads[index];
+                    if (!item) return;
+                    const action = btn.dataset.action;
+
+                    if (action === "toggle") {
+                        if (item.status === "canceling") return;
+                        if (item.status === "downloading") {
+                            item.status = "canceling";
+                            updateUI();
+                            try {
+                                await api.fetchApi("/honda/tools/download/cancel", {
+                                    method: "POST",
+                                    body: JSON.stringify({ url: item.url })
+                                });
+                            } catch (_) {}
+                        } else {
+                            if (!item.url || !item.dir) return;
+                            if (item.status === "done" && !confirm("This file is already downloaded. Are you sure you want to download it again?")) return;
+                            item.status = "downloading";
+                            item.progress = 0;
+                            updateUI();
+                            try {
+                                await api.fetchApi("/honda/tools/download", {
+                                    method: "POST",
+                                    body: JSON.stringify({ url: item.url, directory: item.dir })
+                                });
+                            } catch (_) {
+                                item.status = "error";
+                                updateUI();
+                            }
+                        }
+                    } else if (action === "delete") {
+                        if (item.dir || item.url) {
+                            if (!confirm("Are you sure you want to remove this download?")) return;
+                        }
+                        downloads.splice(index, 1);
+                        saveConfig();
+                        updateUI();
+                    }
+                });
+
+
                 const addBtn = document.createElement("div");
                 addBtn.className = "honda-download-add-btn";
                 addBtn.textContent = "➕ Add File";
@@ -272,6 +321,8 @@ app.registerExtension({
                             
                             const btn = document.createElement("button");
                             btn.className = "honda-download-btn";
+                            btn.dataset.action = "toggle";
+                            btn.dataset.index = index;
                             
                             if (item.status === "canceling") {
                                 btn.textContent = "⏳";
@@ -294,14 +345,8 @@ app.registerExtension({
                             delBtn.className = "honda-download-btn";
                             delBtn.textContent = "🗑️";
                             delBtn.title = "Remove";
-                            delBtn.onclick = () => {
-                                if (item.dir || item.url) {
-                                    if (!confirm("Are you sure you want to remove this download?")) return;
-                                }
-                                downloads.splice(index, 1);
-                                saveConfig();
-                                updateUI();
-                            };
+                            delBtn.dataset.action = "delete";
+                            delBtn.dataset.index = index;
                             
                             const topRow = document.createElement("div");
                             topRow.className = "honda-download-row-top";
@@ -340,40 +385,6 @@ app.registerExtension({
                             row.appendChild(inputsRow);
                             row.appendChild(progressContainer);
                             listContainer.appendChild(row);
-                            
-                            // Handle single download/cancel
-                            btn.onclick = async () => {
-                                if (item.status === "downloading") {
-                                    // Set to canceling immediately — block further interaction
-                                    item.status = "canceling";
-                                    updateUI();
-                                    try {
-                                        await api.fetchApi("/honda/tools/download/cancel", {
-                                            method: "POST",
-                                            body: JSON.stringify({ url: item.url })
-                                        });
-                                    } catch (e) {}
-                                    // Final state will be set by the backend websocket message (idle)
-                                } else if (item.status === "canceling") {
-                                    return; // Locked — do nothing
-                                } else {
-                                    if (!item.url || !item.dir) return;
-                                    if (item.status === "done" && !confirm("This file is already downloaded. Are you sure you want to download it again?")) return;
-                                    
-                                    item.status = "downloading";
-                                    item.progress = 0;
-                                    updateUI();
-                                    try {
-                                        await api.fetchApi("/honda/tools/download", {
-                                            method: "POST",
-                                            body: JSON.stringify({ url: item.url, directory: item.dir })
-                                        });
-                                    } catch (e) {
-                                        item.status = "error";
-                                        updateUI();
-                                    }
-                                }
-                            };
                         });
                         
                         if (anyCanceling) {
