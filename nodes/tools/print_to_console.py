@@ -42,3 +42,7 @@ class HondaPrintToConsole(io.ComfyNode):
             else:
                 print(f"[Honda] {value}")
         return io.NodeOutput()
+
+    @classmethod
+    def IS_CHANGED(cls, **kwargs):
+        return float("nan")
