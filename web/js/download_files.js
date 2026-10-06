@@ -241,10 +241,10 @@ app.registerExtension({
                             btn.className = "honda-download-btn";
                             
                             if (item.status === "downloading") {
-                                btn.textContent = "⏹️";
+                                btn.textContent = "❌";
                                 btn.title = "Cancel download";
                             } else if (item.status === "done") {
-                                btn.textContent = "✅";
+                                btn.textContent = "✔️";
                                 btn.title = "Redownload";
                             } else {
                                 btn.textContent = "📥";
@@ -253,7 +253,7 @@ app.registerExtension({
                             
                             const delBtn = document.createElement("button");
                             delBtn.className = "honda-download-btn";
-                            delBtn.textContent = "❌";
+                            delBtn.textContent = "🗑️";
                             delBtn.title = "Remove";
                             delBtn.onclick = () => {
                                 if (item.dir || item.url) {
