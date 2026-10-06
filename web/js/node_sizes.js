@@ -11,48 +11,48 @@ import { app } from "../../../scripts/app.js";
 
 const NODE_SIZES = {
     // ── Text ─────────────────────────────────────────────────────────────
-    Honda_Text:             [340, 180],
-    Honda_TextPreview:      [340, 200],
-    Honda_TextConcatenate:  [340, 200],
-    Honda_TextReplace:      [340, 260],
-    Honda_TextSplit:        [340, 240],
-    Honda_TextMatch:        [340, 200],
-    Honda_TextSwitch:       [340, 160],
-    Honda_TextCaseSwitch:   [380, 300],
+    Honda_Text:                     [340, 180],
+    Honda_TextPreview:              [340, 200],
+    Honda_TextConcatenate:          [340, 200],
+    Honda_TextReplace:              [340, 260],
+    Honda_TextSplit:                [340, 240],
+    Honda_TextMatch:                [340, 200],
+    Honda_TextSwitch:               [340, 160],
+    Honda_TextCaseSwitch:           [380, 300],
 
     // ── JSON ─────────────────────────────────────────────────────────────
-    Honda_JSONPreview:      [380, 220],
-    Honda_JSONGetValue:     [340, 220],
-    Honda_JSONSetKey:       [340, 260],
-    Honda_JSONDeleteKey:    [340, 200],
-    Honda_JSONMerge:        [340, 240],
-    Honda_JSONValidate:     [340, 160],
+    Honda_JSONPreview:              [380, 220],
+    Honda_JSONGetValue:             [340, 220],
+    Honda_JSONSetKey:               [340, 260],
+    Honda_JSONDeleteKey:            [340, 200],
+    Honda_JSONMerge:                [340, 240],
+    Honda_JSONValidate:             [340, 160],
 
     // ── File System ───────────────────────────────────────────────────────
-    Honda_Directory:        [340, 120],
-    Honda_CreateDirectory:  [340, 120],
-    Honda_DeleteDirectory:  [340, 120],
-    Honda_DeleteFile:       [340, 120],
-    Honda_RenameFile:       [340, 140],
-    Honda_MoveFile:         [340, 140],
-    Honda_ReadFile:         [340, 120],
-    Honda_ListFiles:        [340, 200],
-    Honda_PathNormalize:    [340, 120],
-    Honda_PathJoin:         [340, 240],
+    Honda_Directory:                [340, 120],
+    Honda_CreateDirectory:          [340, 120],
+    Honda_DeleteDirectory:          [340, 120],
+    Honda_DeleteFile:               [340, 120],
+    Honda_RenameFile:               [340, 140],
+    Honda_MoveFile:                 [340, 140],
+    Honda_ReadFile:                 [340, 120],
+    Honda_ListFiles:                [340, 200],
+    Honda_PathNormalize:            [340, 120],
+    Honda_PathJoin:                 [340, 240],
 
     // ── Image ─────────────────────────────────────────────────────────────
-    Honda_LoadImage:        [280, 460],
-    Honda_SaveImage:        [320, 500],
-    Honda_PreviewImage:     [280, 400],
-    Honda_WatermarkLoad:    [340, 420],
-    Honda_WatermarkText:    [340, 260],
+    Honda_LoadImage:                [280, 460],
+    Honda_SaveImage:                [320, 500],
+    Honda_PreviewImage:             [280, 400],
+    Honda_WatermarkLoad:            [340, 420],
+    Honda_WatermarkText:            [340, 260],
 
     // ── Metadata ──────────────────────────────────────────────────────────
-    Honda_ExtractMetadata:  [480, 320],
-    Honda_WriteMetadata:    [400, 220],
-    Honda_ConvertMetadataFormat: [340, 160],
+    Honda_ExtractMetadata:          [480, 320],
+    Honda_WriteMetadata:            [400, 220],
+    Honda_ConvertMetadataFormat:    [340, 160],
     // ── Tools ─────────────────────────────────────────────────────────────
-    Honda_DownloadFiles:    [400, 300],
+    Honda_DownloadFiles:            [400, 160],
 };
 
 app.registerExtension({
