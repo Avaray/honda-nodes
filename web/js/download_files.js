@@ -340,17 +340,55 @@ app.registerExtension({
                             const urlInput = document.createElement("input");
                             urlInput.className = "honda-download-input";
                             urlInput.placeholder = "URL";
+                            
+                            if (item.urlValid === false) {
+                                urlInput.style.color = "#ff5555";
+                                urlInput.title = "URL might be invalid or unreachable";
+                                urlInput.style.borderColor = "#ff5555";
+                            }
+                            
                             // When blurred: show only filename; when focused: show full URL
                             urlInput.value = item.url ? getFilename(item.url) : "";
+                            
                             urlInput.addEventListener("focus", () => {
                                 urlInput.value = item.url || "";
                             });
-                            urlInput.addEventListener("blur", (e) => {
-                                item.url = e.target.value.trim();
+                            
+                            urlInput.addEventListener("keydown", (e) => {
+                                if (e.key === "Enter") {
+                                    urlInput.blur();
+                                }
+                            });
+                            
+                            urlInput.addEventListener("blur", async (e) => {
+                                const newUrl = e.target.value.trim();
+                                const changed = (item.url !== newUrl);
+                                item.url = newUrl;
+                                
                                 saveConfig();
                                 scheduleUpdate();
                                 urlInput.value = item.url ? getFilename(item.url) : "";
                                 if (node._hondaCheckFilesExist) node._hondaCheckFilesExist();
+                                
+                                if (changed && item.url) {
+                                    item.lastCheckedUrl = item.url;
+                                    urlInput.style.opacity = "0.5";
+                                    try {
+                                        const res = await api.fetchApi("/honda/tools/download/check_url", {
+                                            method: "POST",
+                                            body: JSON.stringify({ url: item.url })
+                                        });
+                                        const data = await res.json();
+                                        if (item.url === item.lastCheckedUrl) {
+                                            item.urlValid = data.valid;
+                                            scheduleUpdate();
+                                        }
+                                    } catch (err) {
+                                        // Ignore fetch errors to not spam console
+                                    } finally {
+                                        urlInput.style.opacity = "1";
+                                    }
+                                }
                             });
                             
                             const btn = document.createElement("button");

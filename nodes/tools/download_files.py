@@ -44,6 +44,31 @@ async def api_cancel_download(request):
             ACTIVE_DOWNLOADS[url]["cancel"] = True
     return web.json_response({"status": "cancelled"})
 
+# We will register an API route to handle URL validation (e.g. check if file exists)
+@PromptServer.instance.routes.post("/honda/tools/download/check_url")
+async def api_check_url(request):
+    data = await request.json()
+    url = data.get("url")
+    if not url:
+        return web.json_response({"status": "error", "valid": False})
+        
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'}, method='HEAD')
+        with urllib.request.urlopen(req, timeout=5) as response:
+            return web.json_response({"status": "success", "valid": response.getcode() < 400})
+    except urllib.error.HTTPError as e:
+        # Some servers reject HEAD. Fallback to GET with Range 0-0.
+        if e.code in (403, 405):
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0', 'Range': 'bytes=0-0'})
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    return web.json_response({"status": "success", "valid": response.getcode() < 400})
+            except Exception:
+                pass
+        return web.json_response({"status": "success", "valid": False})
+    except Exception:
+        return web.json_response({"status": "success", "valid": False})
+
 # We will register an API route to handle manual downloads directly from the UI.
 @PromptServer.instance.routes.post("/honda/tools/download")
 async def api_download_file(request):
@@ -77,23 +102,46 @@ async def api_download_file(request):
             ACTIVE_DOWNLOADS[url] = {"cancel": False}
         canceled = False
         try:
-            def reporthook(blocknum, blocksize, totalsize):
+            initial_size = 0
+            if os.path.exists(target_path):
+                initial_size = os.path.getsize(target_path)
+
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            if initial_size > 0:
+                req.add_header('Range', f'bytes={initial_size}-')
+
+            try:
+                response = urllib.request.urlopen(req)
+                is_partial = (response.getcode() == 206)
+            except urllib.error.HTTPError as e:
+                if e.code == 416:  # Range Not Satisfiable (already fully downloaded)
+                    PromptServer.instance.send_sync("honda_download_progress", {
+                        "url": url, "progress": 100.0, "status": "done"
+                    })
+                    return
+                raise e
+
+            mode = 'ab' if is_partial else 'wb'
+            if not is_partial:
+                initial_size = 0
+
+            content_length = int(response.getheader('Content-Length', 0))
+            totalsize = content_length + initial_size if content_length > 0 else 0
+            blocksize = 8192
+            downloaded = initial_size
+
+            def reporthook():
                 if totalsize > 0:
-                    percent = min(100.0, blocknum * blocksize * 100.0 / totalsize)
+                    percent = min(100.0, downloaded * 100.0 / totalsize)
                 else:
                     percent = 0.0
-                    
                 PromptServer.instance.send_sync("honda_download_progress", {
                     "url": url,
                     "progress": percent,
                     "status": "downloading"
                 })
 
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req) as response, open(target_path, 'wb') as out_file:
-                totalsize = int(response.getheader('Content-Length', 0))
-                blocksize = 8192
-                blocknum = 0
+            with open(target_path, mode) as out_file:
                 while True:
                     with DOWNLOADS_LOCK:
                         if ACTIVE_DOWNLOADS.get(url, {}).get("cancel", False):
@@ -102,13 +150,14 @@ async def api_download_file(request):
                     buffer = response.read(blocksize)
                     if not buffer:
                         break
-                    blocknum += 1
                     out_file.write(buffer)
-                    reporthook(blocknum, blocksize, totalsize)
-            
+                    downloaded += len(buffer)
+                    # Report progress every few blocks to not spam WebSocket? 
+                    # Let's just report every block as before.
+                    reporthook()
+
             if canceled:
-                if os.path.exists(target_path):
-                    os.remove(target_path)
+                # Do NOT delete the file if canceled, so we can resume later!
                 PromptServer.instance.send_sync("honda_download_progress", {
                     "url": url,
                     "progress": 0.0,
@@ -189,9 +238,38 @@ class HondaDownloadFiles(io.ComfyNode):
                     "status": "downloading"
                 })
                 try:
-                    def reporthook(blocknum, blocksize, totalsize):
+                    initial_size = 0
+                    if os.path.exists(target_path):
+                        initial_size = os.path.getsize(target_path)
+
+                    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                    if initial_size > 0:
+                        req.add_header('Range', f'bytes={initial_size}-')
+
+                    try:
+                        response = urllib.request.urlopen(req)
+                        is_partial = (response.getcode() == 206)
+                    except urllib.error.HTTPError as e:
+                        if e.code == 416:  # Range Not Satisfiable
+                            PromptServer.instance.send_sync("honda_download_progress", {
+                                "url": url, "progress": 100.0, "status": "done"
+                            })
+                            print(f"[Honda Nodes] Download already complete: {filename}")
+                            continue
+                        raise e
+
+                    mode = 'ab' if is_partial else 'wb'
+                    if not is_partial:
+                        initial_size = 0
+
+                    content_length = int(response.getheader('Content-Length', 0))
+                    totalsize = content_length + initial_size if content_length > 0 else 0
+                    blocksize = 8192
+                    downloaded = initial_size
+
+                    def reporthook():
                         if totalsize > 0:
-                            percent = min(100.0, blocknum * blocksize * 100.0 / totalsize)
+                            percent = min(100.0, downloaded * 100.0 / totalsize)
                         else:
                             percent = 0.0
                         PromptServer.instance.send_sync("honda_download_progress", {
@@ -199,19 +277,15 @@ class HondaDownloadFiles(io.ComfyNode):
                             "progress": percent,
                             "status": "downloading"
                         })
-                        
-                    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                    with urllib.request.urlopen(req) as response, open(target_path, 'wb') as out_file:
-                        totalsize = int(response.getheader('Content-Length', 0))
-                        blocksize = 8192
-                        blocknum = 0
+
+                    with open(target_path, mode) as out_file:
                         while True:
                             buffer = response.read(blocksize)
                             if not buffer:
                                 break
-                            blocknum += 1
                             out_file.write(buffer)
-                            reporthook(blocknum, blocksize, totalsize)
+                            downloaded += len(buffer)
+                            reporthook()
                             
                     print(f"[Honda Nodes] Download complete: {filename}")
                     PromptServer.instance.send_sync("honda_download_progress", {
