@@ -351,7 +351,7 @@ app.registerExtension({
                                 btn.textContent = "⬇️";
                                 btn.title = "Download";
                                 if (!item.url || !item.dir) {
-                                    btn.style.opacity = "0.3";
+                                    btn.style.filter = "grayscale(100%)";
                                     btn.style.cursor = "not-allowed";
                                 }
                             }
