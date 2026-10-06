@@ -86,11 +86,14 @@ const DOWNLOAD_STYLE = `
     background: rgba(255,255,255,0.1);
     border: 1px dashed rgba(255,255,255,0.3);
     color: var(--fg-color);
-    padding: 6px;
+    padding: 6px 10px;
     border-radius: 4px;
     cursor: pointer;
     text-align: center;
     font-size: 12px;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
 }
 .honda-download-add-btn:hover {
     background: rgba(255,255,255,0.2);
@@ -100,15 +103,24 @@ const DOWNLOAD_STYLE = `
     background: var(--primary-color, #4488ff);
     color: white;
     border: none;
-    padding: 8px;
+    padding: 8px 10px;
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
     text-align: center;
-    margin-top: 4px;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
 }
 .honda-download-all-btn:hover {
     filter: brightness(1.1);
+}
+
+.honda-download-bottom-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
 }
 `;
 
@@ -253,10 +265,14 @@ app.registerExtension({
                 const downloadAllBtn = document.createElement("button");
                 downloadAllBtn.className = "honda-download-all-btn";
                 downloadAllBtn.textContent = "📥 Download All";
+
+                const bottomBar = document.createElement("div");
+                bottomBar.className = "honda-download-bottom-bar";
+                bottomBar.appendChild(addBtn);
+                bottomBar.appendChild(downloadAllBtn);
                 
                 container.appendChild(listContainer);
-                container.appendChild(addBtn);
-                container.appendChild(downloadAllBtn);
+                container.appendChild(bottomBar);
 
                 const saveConfig = () => {
                     if (configWidget) configWidget.value = JSON.stringify(downloads);
@@ -291,11 +307,13 @@ app.registerExtension({
                         let allDownloaded = true;
                         let anyDownloading = false;
                         let anyCanceling = false;
+                        let anyValid = false;
                         
                         downloads.forEach((item, index) => {
                             if (item.status === "downloading") anyDownloading = true;
                             if (item.status === "canceling") anyCanceling = true;
                             if (item.status !== "done") allDownloaded = false;
+                            if (item.url && item.dir) anyValid = true;
 
                             const row = document.createElement("div");
                             row.className = "honda-download-row";
@@ -405,12 +423,14 @@ app.registerExtension({
                         if (anyCanceling) {
                             downloadAllBtn.textContent = "⏳ Canceling...";
                             downloadAllBtn.style.background = "#888";
+                            downloadAllBtn.style.filter = "";
                             downloadAllBtn.disabled = true;
                             downloadAllBtn.style.cursor = "not-allowed";
                             downloadAllBtn.onclick = null;
                         } else if (anyDownloading) {
                             downloadAllBtn.textContent = "Cancel All Downloads";
                             downloadAllBtn.style.background = "#f44336";
+                            downloadAllBtn.style.filter = "";
                             downloadAllBtn.disabled = false;
                             downloadAllBtn.style.cursor = "pointer";
                             downloadAllBtn.onclick = async () => {
@@ -429,6 +449,7 @@ app.registerExtension({
                         } else if (downloads.length > 0 && allDownloaded) {
                             downloadAllBtn.textContent = "All Files Downloaded";
                             downloadAllBtn.style.background = "#4caf50";
+                            downloadAllBtn.style.filter = "";
                             downloadAllBtn.disabled = false;
                             downloadAllBtn.style.cursor = "pointer";
                             downloadAllBtn.onclick = () => {
@@ -439,8 +460,9 @@ app.registerExtension({
                         } else {
                             downloadAllBtn.textContent = "Download All Files";
                             downloadAllBtn.style.background = "var(--primary-color, #4488ff)";
+                            downloadAllBtn.style.cursor = anyValid ? "pointer" : "not-allowed";
+                            downloadAllBtn.style.filter = anyValid ? "" : "grayscale(100%)";
                             downloadAllBtn.disabled = false;
-                            downloadAllBtn.style.cursor = "pointer";
                             downloadAllBtn.onclick = () => startDownloadAll(false);
                         }
                     };
