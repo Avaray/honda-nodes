@@ -219,6 +219,19 @@ app.registerExtension({
                         }
                     };
 
+                    // Throttle websocket-driven redraws to one per animation frame.
+                    // User-interaction calls updateUI() directly for instant feedback.
+                    let _rafPending = false;
+                    const scheduleUpdate = () => {
+                        if (!_rafPending) {
+                            _rafPending = true;
+                            requestAnimationFrame(() => {
+                                _rafPending = false;
+                                updateUI();
+                            });
+                        }
+                    };
+
                     const updateUI = () => {
                         listContainer.innerHTML = "";
                         let allDownloaded = true;
@@ -409,6 +422,7 @@ app.registerExtension({
                     const startDownloadAll = async (force = false) => {
                         for (const item of downloads) {
                             if (!item.url || !item.dir) continue;
+                            if (item.status === "canceling") continue; // never overwrite a canceling item
                             if (item.status === "done" && !force) continue;
                             
                             item.status = "downloading";
@@ -445,7 +459,8 @@ app.registerExtension({
                         if (data.status === "error") {
                             console.error("[Honda Download]", data.error);
                         }
-                        updateUI();
+                        // Throttled: prevents rapid DOM teardown from making buttons unclickable
+                        scheduleUpdate();
                     }
                 });
 
