@@ -44,6 +44,18 @@ from .nodes.fs.path_join import HondaPathJoin
 
 # Tools nodes
 from .nodes.tools.download_files import HondaDownloadFiles
+from .nodes.tools.print_to_console import HondaPrintToConsole
+
+# Array nodes
+from .nodes.array.array_from_text import HondaArrayFromText
+from .nodes.array.array_to_text import HondaArrayToText
+from .nodes.array.array_get_item import HondaArrayGetItem
+from .nodes.array.array_slice import HondaArraySlice
+from .nodes.array.array_length import HondaArrayLength
+from .nodes.array.array_filter import HondaArrayFilter
+from .nodes.array.array_includes import HondaArrayIncludes
+from .nodes.array.array_is_empty import HondaArrayIsEmpty
+from .nodes.array.array_for_each import HondaArrayForEach
 
 class HondaNodesExtension(ComfyExtension):
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
@@ -81,6 +93,16 @@ class HondaNodesExtension(ComfyExtension):
             HondaPathNormalize,
             HondaPathJoin,
             HondaDownloadFiles,
+            HondaPrintToConsole,
+            HondaArrayFromText,
+            HondaArrayToText,
+            HondaArrayGetItem,
+            HondaArraySlice,
+            HondaArrayLength,
+            HondaArrayFilter,
+            HondaArrayIncludes,
+            HondaArrayIsEmpty,
+            HondaArrayForEach,
         ]
 
 
