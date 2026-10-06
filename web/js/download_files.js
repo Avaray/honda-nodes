@@ -307,7 +307,12 @@ app.registerExtension({
                             dirInput.className = "honda-download-input";
                             dirInput.placeholder = "Directory (e.g. models/checkpoints)";
                             dirInput.value = item.dir || "";
-                            dirInput.onchange = (e) => { item.dir = e.target.value; saveConfig(); if (node._hondaCheckFilesExist) node._hondaCheckFilesExist(); };
+                            dirInput.onchange = (e) => { 
+                                item.dir = e.target.value; 
+                                saveConfig(); 
+                                scheduleUpdate();
+                                if (node._hondaCheckFilesExist) node._hondaCheckFilesExist(); 
+                            };
                             
                             const urlInput = document.createElement("input");
                             urlInput.className = "honda-download-input";
@@ -320,6 +325,7 @@ app.registerExtension({
                             urlInput.addEventListener("blur", (e) => {
                                 item.url = e.target.value.trim();
                                 saveConfig();
+                                scheduleUpdate();
                                 urlInput.value = item.url ? getFilename(item.url) : "";
                                 if (node._hondaCheckFilesExist) node._hondaCheckFilesExist();
                             });
@@ -342,8 +348,12 @@ app.registerExtension({
                                 btn.textContent = "✔️";
                                 btn.title = "Redownload";
                             } else {
-                                btn.textContent = "📥";
+                                btn.textContent = "⬇️";
                                 btn.title = "Download";
+                                if (!item.url || !item.dir) {
+                                    btn.style.opacity = "0.3";
+                                    btn.style.cursor = "not-allowed";
+                                }
                             }
                             
                             const delBtn = document.createElement("button");
