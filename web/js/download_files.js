@@ -419,7 +419,12 @@ app.registerExtension({
                             btn.dataset.action = "toggle";
                             btn.dataset.index = index;
                             
-                            if (item.status === "canceling") {
+                            if (item.isDuplicate) {
+                                btn.textContent = "⚠️";
+                                btn.title = "Duplicate file path. Please change URL or directory.";
+                                btn.style.filter = "grayscale(100%)";
+                                btn.style.cursor = "not-allowed";
+                            } else if (item.status === "canceling") {
                                 btn.textContent = "⏳";
                                 btn.title = "Canceling...";
                                 btn.disabled = true;
@@ -435,11 +440,6 @@ app.registerExtension({
                                 btn.textContent = "⬇️";
                                 btn.title = "Download";
                                 if (!item.url || !item.dir) {
-                                    btn.style.filter = "grayscale(100%)";
-                                    btn.style.cursor = "not-allowed";
-                                } else if (item.isDuplicate) {
-                                    btn.textContent = "⚠️";
-                                    btn.title = "Duplicate file path. Please change URL or directory.";
                                     btn.style.filter = "grayscale(100%)";
                                     btn.style.cursor = "not-allowed";
                                 }
@@ -481,7 +481,7 @@ app.registerExtension({
                             } else if (item.status === "done") {
                                 progressFill.style.background = "#4caf50";
                                 progressFill.style.width = "100%";
-                                row.style.borderColor = "#4caf50";
+                                if (!item.isDuplicate) row.style.borderColor = "#4caf50";
                             } else if (item.status === "canceling") {
                                 progressFill.style.background = "#ff9800";
                             }
