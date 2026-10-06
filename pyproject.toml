@@ -1,6 +1,6 @@
 [project]
 name = "honda-nodes"
-description = "A collection of utility nodes for ComfyUI, built for the V3 API (Nodes 2.0). Covers text manipulation, file system operations, JSON parsing, image metadata, and more."
+description = "A specialized node pack heavily focused on secure image metadata editing and manipulation, supported by a suite of JSON, text, and file system automation tools. Optimized for the V3 API (Nodes 2.0)."
 version = "1.0.0"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
