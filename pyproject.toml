@@ -4,9 +4,6 @@ description = "A specialized node pack heavily focused on secure image metadata 
 version = "1.0.0"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
-authors = [
-    { name = "Avaray" }
-]
 dependencies = [
     "comfyui-frontend-package>=1.50.0"
 ]
