@@ -62,11 +62,10 @@ const DOWNLOAD_STYLE = `
     cursor: pointer;
     font-size: 16px;
     padding: 2px 4px;
-    transition: transform 0.1s;
     flex-shrink: 0;
 }
 .honda-download-btn:hover {
-    transform: scale(1.1);
+    opacity: 0.8;
 }
 
 .honda-download-progress-bar {
@@ -438,6 +437,9 @@ app.registerExtension({
                     const data = e.detail;
                     const item = downloads.find(d => d.url === data.url);
                     if (item) {
+                        // While canceling, ignore all backend progress updates — only
+                        // accept the final "idle" or "error" confirmation to unblock the UI.
+                        if (item.status === "canceling" && data.status === "downloading") return;
                         item.progress = data.progress;
                         item.status = data.status;
                         if (data.status === "error") {
