@@ -4,7 +4,7 @@
 
 A specialized node pack for [ComfyUI](https://github.com/comfyanonymous/ComfyUI), heavily focused on **image metadata editing and manipulation**, and fully optimized for the new **ComfyUI V3 API** (Nodes 2.0).
 
-At its core, this project is built around the integrated `ime` tool for secure, lossless metadata operations. All other provided nodes (JSON parsing, text manipulation, file system operations, and future logic nodes) serve as supporting branches designed to help you build complex metadata automation pipelines, process data effectively, and perform format conversions directly within your workflows.
+At its core, this project is built around the integrated `ime` tool for secure, lossless metadata operations. Think of the other nodes (JSON parsing, text manipulation, file system operations, and future logic components) as foundational building blocks. They exist to support the core metadata tools, allowing you to orchestrate complex automation pipelines, process data effectively, and perform format conversions directly within your workflows.
 
 ## Features
 
