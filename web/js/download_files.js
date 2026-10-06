@@ -194,9 +194,14 @@ app.registerExtension({
 
                 // Persistent event delegation — survives innerHTML rebuilds inside listContainer.
                 // Per-item buttons set data-action and data-index; we handle them here.
-                listContainer.addEventListener("click", async (e) => {
+                // We use 'mousedown' instead of 'click' because rapid WebSocket updates 
+                // can rebuild the DOM between mousedown and mouseup, preventing 'click' from firing.
+                listContainer.addEventListener("mousedown", async (e) => {
                     const btn = e.target.closest("[data-action]");
                     if (!btn) return;
+                    // Prevent default to stop inputs from losing focus unnecessarily
+                    e.preventDefault();
+                    
                     const index = parseInt(btn.dataset.index, 10);
                     if (isNaN(index)) return;
                     const item = downloads[index];
