@@ -10,6 +10,11 @@ authors = [
 dependencies = [
     "comfyui-frontend-package>=1.50.0"
 ]
+classifiers = [
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS"
+]
 
 [project.urls]
 Repository = "https://github.com/Avaray/honda-nodes"
