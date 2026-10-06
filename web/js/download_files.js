@@ -271,7 +271,7 @@ app.registerExtension({
                                 btn.textContent = "⏹️";
                                 btn.title = "Cancel download";
                             } else if (item.status === "done") {
-                                btn.textContent = "✅";
+                                btn.textContent = "✔️";
                                 btn.title = "Redownload";
                             } else {
                                 btn.textContent = "📥";
@@ -371,7 +371,7 @@ app.registerExtension({
                             downloadAllBtn.style.cursor = "not-allowed";
                             downloadAllBtn.onclick = null;
                         } else if (anyDownloading) {
-                            downloadAllBtn.textContent = "⏹️ Cancel All Downloads";
+                            downloadAllBtn.textContent = "Cancel All Downloads";
                             downloadAllBtn.style.background = "#f44336";
                             downloadAllBtn.disabled = false;
                             downloadAllBtn.style.cursor = "pointer";
@@ -389,7 +389,7 @@ app.registerExtension({
                                 ));
                             };
                         } else if (downloads.length > 0 && allDownloaded) {
-                            downloadAllBtn.textContent = "✅ All Files Downloaded (Click to Force)";
+                            downloadAllBtn.textContent = "All Files Downloaded";
                             downloadAllBtn.style.background = "#4caf50";
                             downloadAllBtn.disabled = false;
                             downloadAllBtn.style.cursor = "pointer";
@@ -399,7 +399,7 @@ app.registerExtension({
                                 }
                             };
                         } else {
-                            downloadAllBtn.textContent = "📥 Download All";
+                            downloadAllBtn.textContent = "Download All Files";
                             downloadAllBtn.style.background = "var(--primary-color, #4488ff)";
                             downloadAllBtn.disabled = false;
                             downloadAllBtn.style.cursor = "pointer";
