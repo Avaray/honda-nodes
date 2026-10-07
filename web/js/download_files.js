@@ -127,6 +127,18 @@ const DOWNLOAD_STYLE = `
     margin-top: 4px;
     overflow: hidden;
 }
+
+@keyframes honda-checking-pulse {
+    0%   { border-color: #4488ff; box-shadow: 0 0 0 0 rgba(68,136,255,0.4); }
+    50%  { border-color: #88bbff; box-shadow: 0 0 0 3px rgba(68,136,255,0); }
+    100% { border-color: #4488ff; box-shadow: 0 0 0 0 rgba(68,136,255,0); }
+}
+
+.honda-download-input--checking {
+    animation: honda-checking-pulse 1.2s ease-in-out infinite;
+    opacity: 0.8;
+    cursor: wait;
+}
 `;
 
 function attachResizeToNode(node, container, domWidget, minH = 150) {
@@ -452,7 +464,9 @@ app.registerExtension({
                             urlInput.className = "honda-download-input";
                             urlInput.placeholder = "URL";
                             
-                            if (item.authRequired) {
+                            if (item.checking) {
+                                urlInput.classList.add("honda-download-input--checking");
+                            } else if (item.authRequired) {
                                 urlInput.style.color = "#ff5555";
                                 urlInput.title = "Authentication required. Please configure the API token in the node inputs.";
                                 urlInput.style.borderColor = "#ff5555";
@@ -463,7 +477,9 @@ app.registerExtension({
                             }
                             
                             // When blurred: show only filename; when focused: show full URL
-                            urlInput.value = item.url ? (item.remoteFilename || getFilename(item.url)) : "";
+                            urlInput.value = item.checking
+                                ? "Checking..."
+                                : item.url ? (item.remoteFilename || getFilename(item.url)) : "";
 
                             
                             urlInput.addEventListener("focus", () => {
@@ -489,7 +505,8 @@ app.registerExtension({
                                 
                                 if (changed && item.url) {
                                     item.lastCheckedUrl = item.url;
-                                    urlInput.style.opacity = "0.5";
+                                    urlInput.classList.add("honda-download-input--checking");
+                                    urlInput.value = "Checking...";
                                     try {
                                         const payload = { url: item.url, ...getTokens() };
                                         const res = await api.fetchApi("/honda/tools/download/check_url", {
@@ -508,7 +525,8 @@ app.registerExtension({
                                     } catch (err) {
                                         // Ignore fetch errors to not spam console
                                     } finally {
-                                        urlInput.style.opacity = "1";
+                                        urlInput.classList.remove("honda-download-input--checking");
+                                        urlInput.value = item.remoteFilename || getFilename(item.url);
                                     }
                                 }
                             });
@@ -728,6 +746,10 @@ app.registerExtension({
                 node._hondaCheckFilesExist = checkFilesExist;
 
                 const recheckUrls = async () => {
+                    // Mark all items as checking and redraw so the animation kicks in
+                    downloads.forEach(d => { if (d.url) d.checking = true; });
+                    updateUI();
+                    
                     for (const item of downloads) {
                         if (!item.url) continue;
                         try {
@@ -741,9 +763,10 @@ app.registerExtension({
                             item.authRequired = data.error === "auth_required";
                             if (data.filename) item.remoteFilename = data.filename;
                         } catch (e) {}
+                        item.checking = false;
+                        updateUI();
                     }
                     saveConfig();
-                    updateUI();
                 };
                 
                 node._hondaRecheckUrls = recheckUrls;
