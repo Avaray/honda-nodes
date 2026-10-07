@@ -300,22 +300,25 @@ app.registerExtension({
                 details.appendChild(summary);
 
                 const tokensContainer = document.createElement("div");
-                tokensContainer.style.display = "flex";
-                tokensContainer.style.flexDirection = "column";
-                tokensContainer.style.gap = "4px";
+                tokensContainer.style.display = "grid";
+                tokensContainer.style.gridTemplateColumns = "max-content 1fr";
+                tokensContainer.style.gap = "4px 8px";
+                tokensContainer.style.alignItems = "center";
                 tokensContainer.style.marginTop = "4px";
 
                 const createTokenInput = (labelText, widgetName) => {
                     const label = document.createElement("label");
-                    label.style.display = "flex";
-                    label.style.justifyContent = "space-between";
-                    label.style.alignItems = "center";
-                    label.textContent = labelText;
+                    label.style.display = "contents";
+
+                    const span = document.createElement("span");
+                    span.textContent = labelText;
+                    span.style.whiteSpace = "nowrap";
 
                     const input = document.createElement("input");
                     input.type = "password";
                     input.className = "honda-download-input";
-                    input.style.width = "65%";
+                    input.style.width = "100%";
+                    input.style.boxSizing = "border-box";
                     input.placeholder = "Paste API token...";
                     input.value = node.widgets?.find(w => w.name === widgetName)?.value || "";
                     
@@ -325,6 +328,7 @@ app.registerExtension({
                         if (typeof node._hondaRecheckUrls === "function") node._hondaRecheckUrls();
                     });
 
+                    label.appendChild(span);
                     label.appendChild(input);
                     return label;
                 };
