@@ -42,8 +42,14 @@ def get_filename_from_headers(response, original_url):
 @PromptServer.instance.routes.post("/honda/tools/download/check")
 async def api_check_downloads(request):
     data = await request.json()
+    
+    # We will accept optional global tokens from the payload
+    civitai_token = data.get("civitai_token", "")
+    hf_token = data.get("hf_token", "")
+    items = data.get("items", []) if "items" in data else data
+    
     results = {}
-    for item in data:
+    for item in items:
         url = item.get("url")
         directory = item.get("dir")
         if not url or not directory:
@@ -58,6 +64,7 @@ async def api_check_downloads(request):
         filename = os.path.basename(urlparse(url).path) or "downloaded_file"
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}, method="HEAD")
+            apply_auth(req, url, civitai_token, hf_token)
             with urllib.request.urlopen(req, timeout=5) as resp:
                 filename = get_filename_from_headers(resp, url)
         except Exception:
@@ -82,6 +89,9 @@ async def api_cancel_download(request):
 async def api_check_url(request):
     data = await request.json()
     url = data.get("url")
+    civitai_token = data.get("civitai_token", "")
+    hf_token = data.get("hf_token", "")
+    
     if not url:
         return web.json_response({"status": "error", "valid": False, "filename": None})
 
@@ -89,6 +99,7 @@ async def api_check_url(request):
 
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}, method="HEAD")
+        apply_auth(req, url, civitai_token, hf_token)
         with urllib.request.urlopen(req, timeout=5) as response:
             if "login" in getattr(response, "url", "").lower() or "auth" in getattr(response, "url", "").lower():
                 return web.json_response({"status": "success", "valid": False, "filename": filename_fallback, "error": "auth_required"})
@@ -99,6 +110,7 @@ async def api_check_url(request):
         if e.code in (403, 405):
             try:
                 req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Range": "bytes=0-0"})
+                apply_auth(req, url, civitai_token, hf_token)
                 with urllib.request.urlopen(req, timeout=5) as response:
                     if "login" in getattr(response, "url", "").lower() or "auth" in getattr(response, "url", "").lower():
                         return web.json_response({"status": "success", "valid": False, "filename": filename_fallback, "error": "auth_required"})
@@ -116,6 +128,8 @@ async def api_download_file(request):
     data = await request.json()
     url = data.get("url")
     directory = data.get("directory")
+    civitai_token = data.get("civitai_token", "")
+    hf_token = data.get("hf_token", "")
     
     if not url or not directory:
         return web.json_response({"status": "error", "message": "Missing url or directory"}, status=400)
@@ -138,6 +152,7 @@ async def api_download_file(request):
         try:
             # Open the connection first so we can read Content-Disposition for the real filename
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            apply_auth(req, url, civitai_token, hf_token)
 
             try:
                 response = urllib.request.urlopen(req)
@@ -146,7 +161,7 @@ async def api_download_file(request):
 
             # Civitai and other sites redirect to a login page if a token is required
             if "login" in getattr(response, "url", "").lower() or "auth" in getattr(response, "url", "").lower():
-                raise Exception("Authentication required. Append ?token=YOUR_CIVITAI_TOKEN to the URL.")
+                raise Exception("Authentication required. Please configure the API token in the node.")
 
             # Resolve the real filename from headers (handles Civitai and similar API URLs)
             filename = get_filename_from_headers(response, url)
@@ -159,6 +174,7 @@ async def api_download_file(request):
                 response.close()
                 req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
                 req.add_header("Range", f"bytes={initial_size}-")
+                apply_auth(req, url, civitai_token, hf_token)
                 try:
                     response = urllib.request.urlopen(req)
                 except urllib.error.HTTPError as e:
@@ -227,6 +243,15 @@ async def api_download_file(request):
     return web.json_response({"status": "started"})
 
 
+def apply_auth(req, url, civitai_token, hf_token):
+    """Applies the correct API token to the request based on the URL domain."""
+    domain = urlparse(url).netloc.lower()
+    if "civitai.com" in domain and civitai_token:
+        req.add_header("Authorization", f"Bearer {civitai_token}")
+    elif "huggingface.co" in domain and hf_token:
+        req.add_header("Authorization", f"Bearer {hf_token}")
+
+
 class HondaDownloadFiles(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -244,12 +269,27 @@ class HondaDownloadFiles(io.ComfyNode):
                     display_name="Downloads",
                     tooltip="Internal JSON configuration of downloads",
                 ),
+                io.String.Input(
+                    "civitai_token",
+                    default="",
+                    socketless=True,
+                    display_name="API Token CivitAI",
+                    tooltip="Optional API token for CivitAI to download models that require authentication.",
+                ),
+                io.String.Input(
+                    "hf_token",
+                    default="",
+                    socketless=True,
+                    display_name="API Token HuggingFace",
+                    tooltip="Optional API token for HuggingFace to download models from private repositories.",
+                ),
             ],
             outputs=[],
         )
 
+
     @classmethod
-    def execute(cls, downloads_config: str = "[]") -> io.NodeOutput:
+    def execute(cls, downloads_config: str = "[]", civitai_token: str = "", hf_token: str = "") -> io.NodeOutput:
         # Downloads are triggered manually through the node UI.
         # This node intentionally does nothing when the workflow runs.
         return io.NodeOutput()

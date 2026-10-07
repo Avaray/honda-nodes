@@ -247,9 +247,10 @@ app.registerExtension({
                             item.progress = 0;
                             updateUI();
                             try {
+                                const payload = { url: item.url, directory: item.dir, ...getTokens() };
                                 await api.fetchApi("/honda/tools/download", {
                                     method: "POST",
-                                    body: JSON.stringify({ url: item.url, directory: item.dir })
+                                    body: JSON.stringify(payload)
                                 });
                             } catch (_) {
                                 item.status = "error";
@@ -404,9 +405,10 @@ app.registerExtension({
                                     item.lastCheckedUrl = item.url;
                                     urlInput.style.opacity = "0.5";
                                     try {
+                                        const payload = { url: item.url, ...getTokens() };
                                         const res = await api.fetchApi("/honda/tools/download/check_url", {
                                             method: "POST",
-                                            body: JSON.stringify({ url: item.url })
+                                            body: JSON.stringify(payload)
                                         });
                                         const data = await res.json();
                                         if (item.url === item.lastCheckedUrl) {
@@ -560,9 +562,10 @@ app.registerExtension({
                             item.progress = 0;
                             updateUI();
                             try {
+                                const payload = { url: item.url, directory: item.dir, ...getTokens() };
                                 await api.fetchApi("/honda/tools/download", {
                                     method: "POST",
-                                    body: JSON.stringify({ url: item.url, directory: item.dir })
+                                    body: JSON.stringify(payload)
                                 });
                             } catch (e) {
                                 item.status = "error";
@@ -599,10 +602,21 @@ app.registerExtension({
                     }
                 });
 
+                // Helper to extract tokens from the node widgets
+                const getTokens = () => {
+                    return {
+                        civitai_token: node.widgets.find(w => w.name === "civitai_token")?.value || "",
+                        hf_token: node.widgets.find(w => w.name === "hf_token")?.value || ""
+                    };
+                };
+
                 const checkFilesExist = async () => {
                     if (downloads.length === 0) return;
                     try {
-                        const payload = downloads.map(d => ({ url: d.url, dir: d.dir }));
+                        const payload = {
+                            items: downloads.map(d => ({ url: d.url, dir: d.dir })),
+                            ...getTokens()
+                        };
                         const resp = await api.fetchApi("/honda/tools/download/check", {
                             method: "POST",
                             body: JSON.stringify(payload)
