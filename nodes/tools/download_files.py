@@ -15,8 +15,8 @@ ACTIVE_DOWNLOADS = {}
 DOWNLOADS_LOCK = threading.Lock()
 
 
-def get_filename_from_headers(response, url):
-    """Extract the real filename from Content-Disposition, falling back to the URL path."""
+def get_filename_from_headers(response, original_url):
+    """Extract the real filename from Content-Disposition, falling back to the resolved URL path."""
     cd = response.getheader("Content-Disposition", "")
     if cd:
         # RFC 5987 encoded: filename*=UTF-8''some%20file.safetensors
@@ -27,8 +27,16 @@ def get_filename_from_headers(response, url):
         m = re.search(r'filename\s*=\s*["\']?([^"\';\r\n]+)["\']?', cd, re.IGNORECASE)
         if m:
             return m.group(1).strip()
-    # Fall back to last path segment
-    return os.path.basename(urlparse(url).path) or "downloaded_file"
+            
+    # Fall back to the final resolved URL path, or original if not available
+    final_url = getattr(response, "url", original_url)
+    filename = os.path.basename(urlparse(final_url).path)
+    
+    # If the URL ends with a directory or something like an ID (no extension), and we had an original fallback
+    if not filename or filename in ("login", "authorize"):
+        filename = os.path.basename(urlparse(original_url).path)
+        
+    return filename or "downloaded_file"
 
 
 @PromptServer.instance.routes.post("/honda/tools/download/check")
@@ -82,6 +90,8 @@ async def api_check_url(request):
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}, method="HEAD")
         with urllib.request.urlopen(req, timeout=5) as response:
+            if "login" in getattr(response, "url", "").lower() or "auth" in getattr(response, "url", "").lower():
+                return web.json_response({"status": "success", "valid": False, "filename": filename_fallback, "error": "auth_required"})
             filename = get_filename_from_headers(response, url)
             return web.json_response({"status": "success", "valid": response.getcode() < 400, "filename": filename})
     except urllib.error.HTTPError as e:
@@ -90,6 +100,8 @@ async def api_check_url(request):
             try:
                 req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Range": "bytes=0-0"})
                 with urllib.request.urlopen(req, timeout=5) as response:
+                    if "login" in getattr(response, "url", "").lower() or "auth" in getattr(response, "url", "").lower():
+                        return web.json_response({"status": "success", "valid": False, "filename": filename_fallback, "error": "auth_required"})
                     filename = get_filename_from_headers(response, url)
                     return web.json_response({"status": "success", "valid": response.getcode() < 400, "filename": filename})
             except Exception:
@@ -131,6 +143,10 @@ async def api_download_file(request):
                 response = urllib.request.urlopen(req)
             except urllib.error.HTTPError as e:
                 raise e
+
+            # Civitai and other sites redirect to a login page if a token is required
+            if "login" in getattr(response, "url", "").lower() or "auth" in getattr(response, "url", "").lower():
+                raise Exception("Authentication required. Append ?token=YOUR_CIVITAI_TOKEN to the URL.")
 
             # Resolve the real filename from headers (handles Civitai and similar API URLs)
             filename = get_filename_from_headers(response, url)

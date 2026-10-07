@@ -365,7 +365,11 @@ app.registerExtension({
                             urlInput.className = "honda-download-input";
                             urlInput.placeholder = "URL";
                             
-                            if (item.urlValid === false) {
+                            if (item.authRequired) {
+                                urlInput.style.color = "#ff5555";
+                                urlInput.title = "Authentication required. Append ?token=YOUR_CIVITAI_TOKEN to the URL.";
+                                urlInput.style.borderColor = "#ff5555";
+                            } else if (item.urlValid === false) {
                                 urlInput.style.color = "#ff5555";
                                 urlInput.title = "URL might be invalid or unreachable";
                                 urlInput.style.borderColor = "#ff5555";
@@ -407,6 +411,7 @@ app.registerExtension({
                                         const data = await res.json();
                                         if (item.url === item.lastCheckedUrl) {
                                             item.urlValid = data.valid;
+                                            item.authRequired = (data.error === "auth_required");
                                             if (data.filename) item.remoteFilename = data.filename;
                                             scheduleUpdate();
                                             // Update the collapsed display to show the real filename
