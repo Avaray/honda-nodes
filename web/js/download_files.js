@@ -647,6 +647,30 @@ app.registerExtension({
                 
                 node._hondaCheckFilesExist = checkFilesExist;
 
+                const recheckUrls = async () => {
+                    for (const item of downloads) {
+                        if (!item.url) continue;
+                        try {
+                            const payload = { url: item.url, ...getTokens() };
+                            const res = await api.fetchApi("/honda/tools/download/check_url", {
+                                method: "POST",
+                                body: JSON.stringify(payload)
+                            });
+                            const data = await res.json();
+                            item.urlValid = data.valid;
+                            item.authRequired = data.error === "auth_required";
+                            if (data.filename) item.remoteFilename = data.filename;
+                        } catch (e) {}
+                    }
+                    saveConfig();
+                    updateUI();
+                };
+
+                const civitaiWidget = node.widgets?.find(w => w.name === "civitai_token");
+                if (civitaiWidget) civitaiWidget.callback = recheckUrls;
+                const hfWidget = node.widgets?.find(w => w.name === "hf_token");
+                if (hfWidget) hfWidget.callback = recheckUrls;
+
                 updateUI();
                 checkFilesExist();
 

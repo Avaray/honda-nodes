@@ -89,8 +89,11 @@ async def api_cancel_download(request):
 async def api_check_url(request):
     data = await request.json()
     url = data.get("url")
-    civitai_token = data.get("civitai_token", "")
-    hf_token = data.get("hf_token", "")
+    civitai_token = data.get("civitai_token", "").strip()
+    hf_token = data.get("hf_token", "").strip()
+    
+    print(f"[Honda Check API] Checking URL: {url}")
+    print(f"[Honda Check API] CivitAI Token present: {bool(civitai_token)}")
     
     if not url:
         return web.json_response({"status": "error", "valid": False, "filename": None})
@@ -134,8 +137,11 @@ async def api_download_file(request):
     data = await request.json()
     url = data.get("url")
     directory = data.get("directory")
-    civitai_token = data.get("civitai_token", "")
-    hf_token = data.get("hf_token", "")
+    civitai_token = data.get("civitai_token", "").strip()
+    hf_token = data.get("hf_token", "").strip()
+    
+    print(f"[Honda Download API] Received download request for: {url}")
+    print(f"[Honda Download API] CivitAI Token present: {bool(civitai_token)}")
     
     if not url or not directory:
         return web.json_response({"status": "error", "message": "Missing url or directory"}, status=400)
@@ -263,11 +269,11 @@ def apply_auth(url, civitai_token, hf_token):
     domain = urlparse(url).netloc.lower()
     
     if "civitai.com" in domain and civitai_token:
-        headers["Authorization"] = f"Bearer {civitai_token}"
-        # Civitai download endpoints often require the token in the query string
-        # because Authorization headers can be dropped during redirects.
+        # We MUST NOT set "Authorization: Bearer" header for Civitai!
+        # Civitai redirects to Cloudflare R2 / AWS S3 pre-signed URLs.
+        # If the Authorization header is present, S3/R2 strictly rejects the request with 400 Bad Request.
+        # So we ONLY append the token to the query string, which survives redirects and authenticates us.
         separator = "&" if "?" in url else "?"
-        # Only append if token is not already in the URL
         if "token=" not in url:
             url = f"{url}{separator}token={civitai_token}"
             
