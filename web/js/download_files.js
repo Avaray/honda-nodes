@@ -324,7 +324,7 @@ app.registerExtension({
                         downloads.forEach(item => item.isDuplicate = false);
                         downloads.forEach((item, index) => {
                             if (!item.url || !item.dir) return;
-                            const filename = getFilename(item.url);
+                            const filename = item.remoteFilename || getFilename(item.url);
                             const pathKey = (item.dir.replace(/\\/g, "/").replace(/\/$/, "") + "/" + filename).toLowerCase();
                             if (seen[pathKey] !== undefined) {
                                 item.isDuplicate = true;
@@ -372,7 +372,8 @@ app.registerExtension({
                             }
                             
                             // When blurred: show only filename; when focused: show full URL
-                            urlInput.value = item.url ? getFilename(item.url) : "";
+                            urlInput.value = item.url ? (item.remoteFilename || getFilename(item.url)) : "";
+
                             
                             urlInput.addEventListener("focus", () => {
                                 urlInput.value = item.url || "";
@@ -388,10 +389,11 @@ app.registerExtension({
                                 const newUrl = e.target.value.trim();
                                 const changed = (item.url !== newUrl);
                                 item.url = newUrl;
+                                if (changed) item.remoteFilename = null;
                                 
                                 saveConfig();
                                 scheduleUpdate();
-                                urlInput.value = item.url ? getFilename(item.url) : "";
+                                urlInput.value = item.url ? (item.remoteFilename || getFilename(item.url)) : "";
                                 if (node._hondaCheckFilesExist) node._hondaCheckFilesExist();
                                 
                                 if (changed && item.url) {
@@ -405,7 +407,10 @@ app.registerExtension({
                                         const data = await res.json();
                                         if (item.url === item.lastCheckedUrl) {
                                             item.urlValid = data.valid;
+                                            if (data.filename) item.remoteFilename = data.filename;
                                             scheduleUpdate();
+                                            // Update the collapsed display to show the real filename
+                                            urlInput.value = item.remoteFilename || getFilename(item.url);
                                         }
                                     } catch (err) {
                                         // Ignore fetch errors to not spam console
@@ -577,6 +582,10 @@ app.registerExtension({
                         if (item.status === "canceling" && data.status === "downloading") return;
                         item.progress = data.progress;
                         item.status = data.status;
+                        if (data.filename) {
+                            item.remoteFilename = data.filename;
+                            saveConfig();
+                        }
                         if (data.status === "error") {
                             console.error("[Honda Download]", data.error);
                         }

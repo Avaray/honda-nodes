@@ -1,6 +1,6 @@
 # ⚡️ Honda Nodes
 
-A specialized node pack for [ComfyUI](https://github.com/comfyanonymous/ComfyUI), heavily focused on **image metadata editing and manipulation**, and fully optimized for the new **ComfyUI V3 API** (Nodes 2.0).
+A specialized node pack for [ComfyUI](https://github.com/comfyanonymous/ComfyUI), focused on **image metadata editing and manipulation**, and fully optimized for the new **ComfyUI V3 API** (Nodes 2.0).
 
 ![Example Nodes](https://raw.githubusercontent.com/Avaray/honda-nodes/refs/heads/main/.github/screenshots/screenshot.jpg)
 
