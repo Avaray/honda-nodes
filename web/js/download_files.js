@@ -313,6 +313,12 @@ app.registerExtension({
                         }
                     };
 
+                    // Helper to extract API tokens from the node's socketless widgets.
+                    const getTokens = () => ({
+                        civitai_token: node.widgets.find(w => w.name === "civitai_token")?.value || "",
+                        hf_token: node.widgets.find(w => w.name === "hf_token")?.value || ""
+                    });
+
                     const updateUI = () => {
                         listContainer.innerHTML = "";
                         let allDownloaded = true;
@@ -601,14 +607,6 @@ app.registerExtension({
                         scheduleUpdate();
                     }
                 });
-
-                // Helper to extract tokens from the node widgets
-                const getTokens = () => {
-                    return {
-                        civitai_token: node.widgets.find(w => w.name === "civitai_token")?.value || "",
-                        hf_token: node.widgets.find(w => w.name === "hf_token")?.value || ""
-                    };
-                };
 
                 const checkFilesExist = async () => {
                     if (downloads.length === 0) return;
