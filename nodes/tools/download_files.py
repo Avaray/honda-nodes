@@ -97,29 +97,34 @@ async def api_check_url(request):
 
     filename_fallback = os.path.basename(urlparse(url).path) or None
 
-    try:
+    def is_login_redirect(final_url):
+        """Returns True if the server redirected us to an auth/login page."""
+        parsed = urlparse(final_url)
+        return ("auth.civitai.com" in parsed.netloc.lower() or
+                "/login" in parsed.path.lower() or
+                "/authorize" in parsed.path.lower())
+
+    def try_head_or_get():
         auth_url, auth_headers = apply_auth(url, civitai_token, hf_token)
-        req = urllib.request.Request(auth_url, headers=auth_headers, method="HEAD")
-        with urllib.request.urlopen(req, timeout=5) as response:
-            if "login" in getattr(response, "url", "").lower() or "auth" in getattr(response, "url", "").lower():
+        for method in ("HEAD", "GET"):
+            req = urllib.request.Request(auth_url, headers=auth_headers, method=method)
+            try:
+                return urllib.request.urlopen(req, timeout=8)
+            except urllib.error.HTTPError as e:
+                if method == "HEAD" and e.code in (403, 405):
+                    continue
+                raise
+        return None
+
+    try:
+        response = try_head_or_get()
+        if response is None:
+            return web.json_response({"status": "success", "valid": False, "filename": filename_fallback})
+        with response:
+            if is_login_redirect(getattr(response, "url", "")):
                 return web.json_response({"status": "success", "valid": False, "filename": filename_fallback, "error": "auth_required"})
             filename = get_filename_from_headers(response, url)
             return web.json_response({"status": "success", "valid": response.getcode() < 400, "filename": filename})
-    except urllib.error.HTTPError as e:
-        # Some servers reject HEAD. Fallback to GET with Range 0-0.
-        if e.code in (403, 405):
-            try:
-                auth_url, auth_headers = apply_auth(url, civitai_token, hf_token)
-                auth_headers["Range"] = "bytes=0-0"
-                req = urllib.request.Request(auth_url, headers=auth_headers)
-                with urllib.request.urlopen(req, timeout=5) as response:
-                    if "login" in getattr(response, "url", "").lower() or "auth" in getattr(response, "url", "").lower():
-                        return web.json_response({"status": "success", "valid": False, "filename": filename_fallback, "error": "auth_required"})
-                    filename = get_filename_from_headers(response, url)
-                    return web.json_response({"status": "success", "valid": response.getcode() < 400, "filename": filename})
-            except Exception:
-                pass
-        return web.json_response({"status": "success", "valid": False, "filename": filename_fallback})
     except Exception:
         return web.json_response({"status": "success", "valid": False, "filename": filename_fallback})
 
@@ -160,8 +165,13 @@ async def api_download_file(request):
             except urllib.error.HTTPError as e:
                 raise e
 
-            # Civitai and other sites redirect to a login page if a token is required
-            if "login" in getattr(response, "url", "").lower() or "auth" in getattr(response, "url", "").lower():
+            # Civitai and other sites redirect to a login page if a token is required.
+            # Use precise checks to avoid false positives (e.g. S3 URLs contain "auth" in query params).
+            final_url = getattr(response, "url", "")
+            final_parsed = urlparse(final_url)
+            if ("auth.civitai.com" in final_parsed.netloc.lower() or
+                    "/login" in final_parsed.path.lower() or
+                    "/authorize" in final_parsed.path.lower()):
                 raise Exception("Authentication required. Please configure the API token in the node.")
 
             # Resolve the real filename from headers (handles Civitai and similar API URLs)
