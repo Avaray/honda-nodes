@@ -306,6 +306,21 @@ app.registerExtension({
                 tokensContainer.style.alignItems = "center";
                 tokensContainer.style.marginTop = "4px";
 
+                let civitaiInputEl = null;
+                let hfInputEl = null;
+
+                const updateSummaryColor = () => {
+                    const hasToken = (civitaiInputEl && civitaiInputEl.value.trim() !== "") || 
+                                     (hfInputEl && hfInputEl.value.trim() !== "");
+                    if (hasToken) {
+                        summary.style.color = "#4CAF50"; // Green
+                        summary.style.fontWeight = "bold";
+                    } else {
+                        summary.style.color = "";
+                        summary.style.fontWeight = "normal";
+                    }
+                };
+
                 const createTokenInput = (labelText, widgetName) => {
                     const label = document.createElement("label");
                     label.style.display = "contents";
@@ -322,21 +337,33 @@ app.registerExtension({
                     input.placeholder = "Paste API token...";
                     input.value = node.widgets?.find(w => w.name === widgetName)?.value || "";
                     
+                    input.addEventListener("input", updateSummaryColor);
+
                     input.addEventListener("change", (e) => {
                         const w = node.widgets?.find(w => w.name === widgetName);
                         if (w) w.value = e.target.value;
                         if (typeof node._hondaRecheckUrls === "function") node._hondaRecheckUrls();
+                        updateSummaryColor();
                     });
 
                     label.appendChild(span);
                     label.appendChild(input);
-                    return label;
+                    return { label, input };
                 };
 
-                tokensContainer.appendChild(createTokenInput("CivitAI:", "civitai_token"));
-                tokensContainer.appendChild(createTokenInput("HuggingFace:", "hf_token"));
+                const civitaiData = createTokenInput("CivitAI:", "civitai_token");
+                const hfData = createTokenInput("HuggingFace:", "hf_token");
+                
+                civitaiInputEl = civitaiData.input;
+                hfInputEl = hfData.input;
+
+                tokensContainer.appendChild(civitaiData.label);
+                tokensContainer.appendChild(hfData.label);
                 details.appendChild(tokensContainer);
                 container.appendChild(details);
+
+                // Initial check on load
+                updateSummaryColor();
 
                 const saveConfig = () => {
                     if (configWidget) configWidget.value = JSON.stringify(downloads);
