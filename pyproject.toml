@@ -1,7 +1,7 @@
 [project]
 name = "honda-nodes"
 description = "A specialized node pack heavily focused on secure image metadata editing and manipulation, supported by a suite of JSON, text, and file system automation tools. Optimized for the V3 API (Nodes 2.0)."
-version = "1.1.0"
+version = "1.2.0"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
 dependencies = [
