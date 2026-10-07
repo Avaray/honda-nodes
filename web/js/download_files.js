@@ -182,10 +182,13 @@ app.registerExtension({
                 const node = this;
                 
                 const configWidget = node.widgets?.find(w => w.name === "downloads_config");
-                if (configWidget) {
-                    configWidget.hidden = true;
-                    configWidget.computeSize = () => [0, -4];
-                }
+                ["downloads_config", "civitai_token", "hf_token"].forEach(name => {
+                    const w = node.widgets?.find(w => w.name === name);
+                    if (w) {
+                        w.hidden = true;
+                        w.computeSize = () => [0, -4];
+                    }
+                });
 
                 let downloads = [];
                 try {
@@ -284,6 +287,52 @@ app.registerExtension({
                 
                 container.appendChild(listContainer);
                 container.appendChild(bottomBar);
+
+                const details = document.createElement("details");
+                details.style.marginTop = "8px";
+                details.style.fontSize = "12px";
+                details.style.color = "var(--input-text, #ccc)";
+
+                const summary = document.createElement("summary");
+                summary.textContent = "API Tokens";
+                summary.style.cursor = "pointer";
+                summary.style.userSelect = "none";
+                details.appendChild(summary);
+
+                const tokensContainer = document.createElement("div");
+                tokensContainer.style.display = "flex";
+                tokensContainer.style.flexDirection = "column";
+                tokensContainer.style.gap = "4px";
+                tokensContainer.style.marginTop = "4px";
+
+                const createTokenInput = (labelText, widgetName) => {
+                    const label = document.createElement("label");
+                    label.style.display = "flex";
+                    label.style.justifyContent = "space-between";
+                    label.style.alignItems = "center";
+                    label.textContent = labelText;
+
+                    const input = document.createElement("input");
+                    input.type = "password";
+                    input.className = "honda-download-input";
+                    input.style.width = "65%";
+                    input.placeholder = "Paste API token...";
+                    input.value = node.widgets?.find(w => w.name === widgetName)?.value || "";
+                    
+                    input.addEventListener("change", (e) => {
+                        const w = node.widgets?.find(w => w.name === widgetName);
+                        if (w) w.value = e.target.value;
+                        if (typeof node._hondaRecheckUrls === "function") node._hondaRecheckUrls();
+                    });
+
+                    label.appendChild(input);
+                    return label;
+                };
+
+                tokensContainer.appendChild(createTokenInput("CivitAI:", "civitai_token"));
+                tokensContainer.appendChild(createTokenInput("HuggingFace:", "hf_token"));
+                details.appendChild(tokensContainer);
+                container.appendChild(details);
 
                 const saveConfig = () => {
                     if (configWidget) configWidget.value = JSON.stringify(downloads);
@@ -665,6 +714,8 @@ app.registerExtension({
                     saveConfig();
                     updateUI();
                 };
+                
+                node._hondaRecheckUrls = recheckUrls;
 
                 const civitaiWidget = node.widgets?.find(w => w.name === "civitai_token");
                 if (civitaiWidget) civitaiWidget.callback = recheckUrls;
