@@ -190,7 +190,7 @@ async def api_download_file(request):
             if not is_partial:
                 initial_size = 0
 
-
+            mode = "ab" if is_partial else "wb"
             content_length = int(response.getheader('Content-Length', 0))
             totalsize = content_length + initial_size if content_length > 0 else 0
             blocksize = 8192
@@ -232,6 +232,9 @@ async def api_download_file(request):
                     "url": url, "progress": 100.0, "status": "done", "filename": filename
                 })
         except Exception as e:
+            import traceback
+            print(f"[Honda Download Error] Failed to download {url}:")
+            traceback.print_exc()
             PromptServer.instance.send_sync("honda_download_progress", {
                 "url": url, "progress": 0.0, "status": "error", "error": str(e)
             })
