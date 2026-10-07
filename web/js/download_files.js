@@ -330,7 +330,7 @@ app.registerExtension({
                     span.style.whiteSpace = "nowrap";
 
                     const input = document.createElement("input");
-                    input.type = "password";
+                    input.type = "text";
                     input.className = "honda-download-input";
                     input.style.width = "100%";
                     input.style.boxSizing = "border-box";
