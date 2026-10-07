@@ -63,8 +63,8 @@ async def api_check_downloads(request):
         # Try to resolve the real filename from the server (Content-Disposition)
         filename = os.path.basename(urlparse(url).path) or "downloaded_file"
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}, method="HEAD")
-            apply_auth(req, url, civitai_token, hf_token)
+            auth_url, auth_headers = apply_auth(url, civitai_token, hf_token)
+            req = urllib.request.Request(auth_url, headers=auth_headers, method="HEAD")
             with urllib.request.urlopen(req, timeout=5) as resp:
                 filename = get_filename_from_headers(resp, url)
         except Exception:
@@ -98,8 +98,8 @@ async def api_check_url(request):
     filename_fallback = os.path.basename(urlparse(url).path) or None
 
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}, method="HEAD")
-        apply_auth(req, url, civitai_token, hf_token)
+        auth_url, auth_headers = apply_auth(url, civitai_token, hf_token)
+        req = urllib.request.Request(auth_url, headers=auth_headers, method="HEAD")
         with urllib.request.urlopen(req, timeout=5) as response:
             if "login" in getattr(response, "url", "").lower() or "auth" in getattr(response, "url", "").lower():
                 return web.json_response({"status": "success", "valid": False, "filename": filename_fallback, "error": "auth_required"})
@@ -109,8 +109,9 @@ async def api_check_url(request):
         # Some servers reject HEAD. Fallback to GET with Range 0-0.
         if e.code in (403, 405):
             try:
-                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Range": "bytes=0-0"})
-                apply_auth(req, url, civitai_token, hf_token)
+                auth_url, auth_headers = apply_auth(url, civitai_token, hf_token)
+                auth_headers["Range"] = "bytes=0-0"
+                req = urllib.request.Request(auth_url, headers=auth_headers)
                 with urllib.request.urlopen(req, timeout=5) as response:
                     if "login" in getattr(response, "url", "").lower() or "auth" in getattr(response, "url", "").lower():
                         return web.json_response({"status": "success", "valid": False, "filename": filename_fallback, "error": "auth_required"})
@@ -151,8 +152,8 @@ async def api_download_file(request):
         canceled = False
         try:
             # Open the connection first so we can read Content-Disposition for the real filename
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            apply_auth(req, url, civitai_token, hf_token)
+            auth_url, auth_headers = apply_auth(url, civitai_token, hf_token)
+            req = urllib.request.Request(auth_url, headers=auth_headers)
 
             try:
                 response = urllib.request.urlopen(req)
@@ -172,9 +173,9 @@ async def api_download_file(request):
             if os.path.exists(target_path):
                 initial_size = os.path.getsize(target_path)
                 response.close()
-                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-                req.add_header("Range", f"bytes={initial_size}-")
-                apply_auth(req, url, civitai_token, hf_token)
+                auth_url, auth_headers = apply_auth(url, civitai_token, hf_token)
+                auth_headers["Range"] = f"bytes={initial_size}-"
+                req = urllib.request.Request(auth_url, headers=auth_headers)
                 try:
                     response = urllib.request.urlopen(req)
                 except urllib.error.HTTPError as e:
@@ -243,13 +244,24 @@ async def api_download_file(request):
     return web.json_response({"status": "started"})
 
 
-def apply_auth(req, url, civitai_token, hf_token):
-    """Applies the correct API token to the request based on the URL domain."""
+def apply_auth(url, civitai_token, hf_token):
+    """Returns a modified URL and a dict of headers based on the API tokens."""
+    headers = {"User-Agent": "Mozilla/5.0"}
     domain = urlparse(url).netloc.lower()
+    
     if "civitai.com" in domain and civitai_token:
-        req.add_header("Authorization", f"Bearer {civitai_token}")
+        headers["Authorization"] = f"Bearer {civitai_token}"
+        # Civitai download endpoints often require the token in the query string
+        # because Authorization headers can be dropped during redirects.
+        separator = "&" if "?" in url else "?"
+        # Only append if token is not already in the URL
+        if "token=" not in url:
+            url = f"{url}{separator}token={civitai_token}"
+            
     elif "huggingface.co" in domain and hf_token:
-        req.add_header("Authorization", f"Bearer {hf_token}")
+        headers["Authorization"] = f"Bearer {hf_token}"
+        
+    return url, headers
 
 
 class HondaDownloadFiles(io.ComfyNode):

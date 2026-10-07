@@ -368,7 +368,7 @@ app.registerExtension({
                             
                             if (item.authRequired) {
                                 urlInput.style.color = "#ff5555";
-                                urlInput.title = "Authentication required. Append ?token=YOUR_CIVITAI_TOKEN to the URL.";
+                                urlInput.title = "Authentication required. Please configure the API token in the node inputs.";
                                 urlInput.style.borderColor = "#ff5555";
                             } else if (item.urlValid === false) {
                                 urlInput.style.color = "#ff5555";
